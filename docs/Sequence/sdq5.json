@@ -1,0 +1,151 @@
+{
+  "version": "31.4.4",
+  "pages": [
+    {
+      "id": "hju0eVY_IehUsEGPKkuM",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-10",
+          "type": "node",
+          "parent": "1",
+          "label": "Auth"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-65",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-10"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-7",
+          "type": "node",
+          "parent": "1",
+          "label": "Lab Manager"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-58",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-7"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-8",
+          "type": "node",
+          "parent": "1",
+          "label": "View"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-59",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-8"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-9",
+          "type": "node",
+          "parent": "1",
+          "label": "Controller"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-62",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-9"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-28",
+          "type": "node",
+          "parent": "1",
+          "label": "Model"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-69",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-28"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-57",
+          "type": "node",
+          "parent": "1",
+          "label": "Database"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-72",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-57"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-60",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-58",
+          "target": "ncaO60ExaMeSlqmCmw8R-59",
+          "label": "1. Open Dashboard"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-61",
+          "type": "edge",
+          "parent": "1",
+          "label": "10. Display filterable dashboard"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-63",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-59",
+          "target": "ncaO60ExaMeSlqmCmw8R-62",
+          "label": "2. GET /dashboard"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-64",
+          "type": "edge",
+          "parent": "1",
+          "label": "9. Render dashboard with filters"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-66",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-62",
+          "target": "ncaO60ExaMeSlqmCmw8R-65",
+          "label": "3. Check role = Lab Manager"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-67",
+          "type": "edge",
+          "parent": "1",
+          "label": "4. Authorised"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-70",
+          "type": "edge",
+          "parent": "1",
+          "label": "5. Fetch all requests (incl. Restricted)"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-71",
+          "type": "edge",
+          "parent": "1",
+          "label": "8. Return request list"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-73",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-69",
+          "target": "ncaO60ExaMeSlqmCmw8R-72",
+          "label": "6. SELECT all active + history"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-74",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-72",
+          "target": "ncaO60ExaMeSlqmCmw8R-69",
+          "label": "7. Return request rows"
+        }
+      ]
+    }
+  ]
+}

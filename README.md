@@ -6,11 +6,11 @@ A system for **Aj. Milk's lab ("vase")** to track lab requests — submission, v
 
 | Name | Student ID | GitHub Username |
 |---|---|---|
-| Pannathon Nithiwatcharin | 6710545695 | |
-| Krittin Konsiang | 6510545241 | |
+| Pannathon Nithiwatcharin | 6710545695 | Pannathon-n |
+| Krittin Konsiang | 6510545241 | Theme86 |
 | Paramee Saejia | 6710545709 | |
-| Piyapong Ausawarachan | 6710545725 | |
-| Phubet Ueananta | 6710545814 | |
+| Piyapong Ausawarachan | 6710545725 | PiyapongAusawarachan |
+| Phubet Ueananta | 6710545814 | kmsimust |
 
 ## Current Project Status
 

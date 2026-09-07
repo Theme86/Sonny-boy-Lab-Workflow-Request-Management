@@ -1,0 +1,100 @@
+{
+  "version": "31.4.4",
+  "pages": [
+    {
+      "id": "hju0eVY_IehUsEGPKkuM",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-7",
+          "type": "node",
+          "parent": "1",
+          "label": "Lab Member"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-8",
+          "type": "node",
+          "parent": "1",
+          "label": "View"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-14",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-8"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-15",
+          "type": "edge",
+          "parent": "ncaO60ExaMeSlqmCmw8R-8",
+          "target": "ncaO60ExaMeSlqmCmw8R-14",
+          "label": "1. Access Restricted request (e.g., via link)"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-9",
+          "type": "node",
+          "parent": "1",
+          "label": "Controller"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-21",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-9"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-22",
+          "type": "edge",
+          "parent": "ncaO60ExaMeSlqmCmw8R-9",
+          "target": "ncaO60ExaMeSlqmCmw8R-21",
+          "label": "2. GET /requests/{id}"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-10",
+          "type": "node",
+          "parent": "1",
+          "label": "Auth"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-25",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-10"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-26",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-21",
+          "target": "ncaO60ExaMeSlqmCmw8R-25",
+          "label": "3. Check confidentiality + user role"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-27",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-25",
+          "target": "ncaO60ExaMeSlqmCmw8R-9",
+          "label": "4. User not requester / owner / Manager"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-23",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-21",
+          "target": "ncaO60ExaMeSlqmCmw8R-14",
+          "label": "5. Return 403 Access Restricted"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-16",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-14",
+          "target": "ncaO60ExaMeSlqmCmw8R-7",
+          "label": "6. Display access-restricted message (SRS-16)"
+        }
+      ]
+    }
+  ]
+}

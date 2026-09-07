@@ -1,0 +1,186 @@
+{
+  "version": "31.4.4",
+  "pages": [
+    {
+      "id": "hju0eVY_IehUsEGPKkuM",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-10",
+          "type": "node",
+          "parent": "1",
+          "label": "Model"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-53",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-7",
+          "type": "node",
+          "parent": "1",
+          "label": "Lecturer/\nResearcher",
+          "html": "<div>Lecturer/</div><div>Researcher</div>"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-45",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-7"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-46",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-7"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-8",
+          "type": "node",
+          "parent": "1",
+          "label": "View"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-47",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-8"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-56",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-8"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-9",
+          "type": "node",
+          "parent": "1",
+          "label": "Controller"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-48",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-9"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-55",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-9"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-28",
+          "type": "node",
+          "parent": "1",
+          "label": "Database"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-52",
+          "type": "node",
+          "parent": "ncaO60ExaMeSlqmCmw8R-28"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-30",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-46",
+          "target": "ncaO60ExaMeSlqmCmw8R-47",
+          "label": "1. Open new request form"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-31",
+          "type": "edge",
+          "parent": "1",
+          "label": "2. Select type = 'Industry Collaboration'"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-32",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-47",
+          "target": "ncaO60ExaMeSlqmCmw8R-48",
+          "label": "3. GET extra fields form"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-33",
+          "type": "edge",
+          "parent": "1",
+          "label": "4. Return form with extra fields"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-34",
+          "type": "edge",
+          "parent": "1",
+          "label": "5. Display partner/contact/confidentiality fields"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-35",
+          "type": "edge",
+          "parent": "1",
+          "label": "6. Fill &amp; submit all fields"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-36",
+          "type": "edge",
+          "parent": "1",
+          "label": "7. POST /requests (IC type)"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-37",
+          "type": "edge",
+          "parent": "1",
+          "label": "8. Validate standard + IC fields (SRS-14)"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-38",
+          "type": "edge",
+          "parent": "1",
+          "label": "9. Default confidentiality='Restricted' if blank (SRS-15)"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-39",
+          "type": "edge",
+          "parent": "1",
+          "label": "10. Persist request with IC tag + confidentiality"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-40",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-53",
+          "target": "ncaO60ExaMeSlqmCmw8R-52",
+          "label": "11. INSERT request record"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-41",
+          "type": "edge",
+          "parent": "1",
+          "label": "12. Confirm saved"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-42",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-53",
+          "target": "ncaO60ExaMeSlqmCmw8R-55",
+          "label": "13. Apply visibility restriction (SRS-16)"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-43",
+          "type": "edge",
+          "parent": "1",
+          "label": "14. Return confirmation"
+        },
+        {
+          "id": "ncaO60ExaMeSlqmCmw8R-44",
+          "type": "edge",
+          "parent": "1",
+          "source": "ncaO60ExaMeSlqmCmw8R-56",
+          "target": "ncaO60ExaMeSlqmCmw8R-45",
+          "label": "15. Show submission confirmation"
+        }
+      ]
+    }
+  ]
+}
