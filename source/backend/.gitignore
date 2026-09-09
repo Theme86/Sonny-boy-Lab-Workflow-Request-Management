@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+
+# environment variables
+.env
+.env.local
+.env.*.local
+
+# Prisma
+generated/
+prisma/generated/
+
+# build output
+dist/
+build/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
+
+# Prisma AI agent skills (auto-installed, not app logic)
+.claude/skills/
+.windsurf/skills/
+.agents/skills/
+.cursor/skills/
+skills-lock.json
+prisma-next.md
