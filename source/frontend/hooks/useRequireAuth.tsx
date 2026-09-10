@@ -1,4 +1,4 @@
-// frontend/hooks/useRequireAuth.ts
+// hooks/useRequireAuth.ts
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -6,10 +6,16 @@ import { useRouter } from 'next/navigation';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+type User = {
+  userId: number;
+  role: string;
+};
+
 export function useRequireAuth() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetch(`${API_URL}/auth/me`, { credentials: 'include' })
@@ -20,10 +26,10 @@ export function useRequireAuth() {
         }
         const data = await res.json();
         setUser(data.user);
-        setLoading(false);
       })
-      .catch(() => router.push('/login'));
+      .catch(() => setError('Could not reach the server'))
+      .finally(() => setLoading(false));
   }, [router]);
 
-  return { loading, user };
+  return { user, loading, error };
 }
