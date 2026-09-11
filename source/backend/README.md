@@ -94,3 +94,34 @@ docker compose exec backend npx prisma migrate deploy
 - The API expects `FRONTEND_URL` to be configured for CORS in the runtime environment.
 - If you use Google login, make sure the same `GOOGLE_CLIENT_ID` is set in the frontend environment as well.
 - If the app is started from the root project, use `source/backend` as the working directory for backend commands.
+
+## Project Structure
+
+```text
+.
+├── README.md
+├── docs/
+├── source/
+│   ├── docker-compose.yml
+│   ├── backend/
+│   │   ├── index.js
+│   │   ├── package.json
+│   │   ├── prisma/
+│   │   ├── routes/
+│   │   ├── utils/
+│   │   ├── .env.example
+│   │   └── public/
+│   │       ├── defaultBanner/
+│   │       │   └── bannerImage.jpg      ← source, one copy, committed to git
+│   │       └── userImages/
+│   │           ├── 1/
+│   │           │   ├── avatar.jpg
+│   │           │   └── banner.jpg       ← copied from defaultBanner on signup
+│   │           └── 2/
+│   │               ├── avatar.jpg
+│   │               └── banner.jpg
+│   └── frontend/
+│       ├── app/
+│       ├── hooks/
+│       └── package.json
+```

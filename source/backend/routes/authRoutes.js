@@ -5,6 +5,8 @@ const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
 const { prisma } = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
+const { downloadAvatar } = require('../utils/downloadAvatar');
+const { assignDefaultBanner } = require('../utils/assignDefaultBanner');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -29,6 +31,7 @@ router.post('/google', async (req, res) => {
   const { sub: googleId, email, given_name, family_name, picture } = payload;
 
   let user = await prisma.users.findUnique({ where: { googleId } });
+  let isNewUser = false;
 
   if (!user) {
     user = await prisma.users.findUnique({ where: { email } });
@@ -38,14 +41,15 @@ router.post('/google', async (req, res) => {
         data: { googleId, lastLoginAt: new Date() },
       });
     } else {
+      isNewUser = true;
       user = await prisma.users.create({
         data: {
           googleId,
           email,
           firstName: given_name ?? '',
           lastName: family_name ?? '',
-          avatarUrl: picture,
           lastLoginAt: new Date(),
+          // avatarUrl intentionally omitted — filled in below
         },
       });
     }
@@ -54,6 +58,27 @@ router.post('/google', async (req, res) => {
       where: { googleId },
       data: { lastLoginAt: new Date() },
     });
+  }
+
+  // only download once — on first creation, or if avatarUrl is still missing
+  if (isNewUser || !user.avatarUrl) {
+    const localAvatarPath = await downloadAvatar(picture, user.userId);
+    if (localAvatarPath) {
+      user = await prisma.users.update({
+        where: { userId: user.userId },
+        data: { avatarUrl: localAvatarPath },
+      });
+    }
+  }
+
+  if (isNewUser || !user.bannerUrl) {
+    const bannerPath = assignDefaultBanner(user.userId);
+    if (bannerPath) {
+      user = await prisma.users.update({
+        where: { userId: user.userId },
+        data: { bannerUrl: bannerPath },
+      });
+    }
   }
 
   if (!user.active) {

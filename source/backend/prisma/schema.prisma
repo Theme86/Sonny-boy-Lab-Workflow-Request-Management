@@ -7,7 +7,186 @@ datasource db {
   provider = "mysql"
 }
 
-/*==================================================  User  ==================================================*/
+model Users {
+  userId            Int                    @id @default(autoincrement()) @map("user_id")
+  firstName         String                 @map("first_name") @db.VarChar(100)
+  lastName          String                 @map("last_name") @db.VarChar(100)
+  role              UserRoles              @default(member)
+  email             String                 @unique @db.VarChar(255)
+  googleId          String?                @unique @map("google_id") @db.VarChar(255)
+  avatarUrl         String?                @map("avatar_url") @db.VarChar(500)
+  createdAt         DateTime               @default(now()) @map("created_at")
+  lastLoginAt       DateTime?              @map("last_login_at")
+  active            Boolean                @default(true)
+  bannerUrl         String?                @map("banner_url") @db.VarChar(500)
+  projectsOwned     Projects[]             @relation("ProjectOwner")
+  statusChangesMade RequestStatusHistory[] @relation("StatusChanger")
+  requestsAssigned  Requests[]             @relation("RequestAssignee")
+  requestsMade      Requests[]             @relation("RequestRequester")
+
+  @@map("users")
+}
+
+model LabRooms {
+  roomId   Int     @id @default(autoincrement()) @map("room_id")
+  name     String  @db.VarChar(100)
+  capacity Int?
+  location String? @db.VarChar(100)
+
+  @@map("lab_rooms")
+}
+
+model Projects {
+  projectId Int     @id @default(autoincrement()) @map("project_id")
+  name      String  @db.VarChar(150)
+  type      String? @db.VarChar(30)
+  ownerId   Int?    @map("owner_id")
+  owner     Users?  @relation("ProjectOwner", fields: [ownerId], references: [userId])
+
+  @@index([ownerId], map: "projects_owner_id_fkey")
+  @@map("projects")
+}
+
+model EquipmentCategories {
+  categoryId  Int          @id @default(autoincrement()) @map("category_id")
+  name        String       @db.VarChar(150)
+  description String?      @db.VarChar(250)
+  equipments  Equipments[]
+
+  @@map("equipment_categories")
+}
+
+model EquipmentProperties {
+  propertyId  Int         @id @default(autoincrement()) @map("property_id")
+  name        String      @db.VarChar(150)
+  description String?     @db.VarChar(250)
+  propEquip   PropEquip[]
+
+  @@map("equipment_property")
+}
+
+model Equipments {
+  equipmentId       Int                  @id @default(autoincrement()) @map("equipment_id")
+  name              String               @db.VarChar(150)
+  description       String?              @db.VarChar(250)
+  categoryId        Int?                 @map("category_id")
+  quantityTotal     Int                  @default(0) @map("quantity_total")
+  quantityAvailable Int                  @default(0) @map("quantity_available")
+  location          String?              @db.VarChar(100)
+  imageUrl          String?              @map("image_url") @db.VarChar(500)
+  category          EquipmentCategories? @relation(fields: [categoryId], references: [categoryId])
+  propEquip         PropEquip[]
+  requests          Requests[]
+
+  @@index([categoryId], map: "equipments_category_id_fkey")
+  @@map("equipments")
+}
+
+model PropEquip {
+  equipmentId Int                 @map("equipment_id")
+  propertyId  Int                 @map("property_id")
+  equipment   Equipments          @relation(fields: [equipmentId], references: [equipmentId])
+  property    EquipmentProperties @relation(fields: [propertyId], references: [propertyId])
+
+  @@id([equipmentId, propertyId])
+  @@index([propertyId], map: "prop_equip_property_id_fkey")
+  @@map("prop_equip")
+}
+
+model Hazards {
+  hazardId    Int      @id @default(autoincrement()) @map("hazard_id")
+  name        String   @db.VarChar(150)
+  description String?  @db.VarChar(250)
+  hazCon      HazCon[]
+
+  @@map("hazards")
+}
+
+model ConsumableProperties {
+  propertyId  Int       @id @default(autoincrement()) @map("property_id")
+  name        String    @db.VarChar(150)
+  description String?   @db.VarChar(250)
+  propCon     PropCon[]
+
+  @@map("consumable_property")
+}
+
+model Consumables {
+  consumableId     Int       @id @default(autoincrement()) @map("consumable_id")
+  name             String    @db.VarChar(150)
+  description      String?   @db.VarChar(250)
+  unit             String    @db.VarChar(10)
+  currentStock     Decimal   @default(0.00) @map("current_stock") @db.Decimal(10, 2)
+  reorderThreshold Decimal   @default(0.00) @map("reorder_threshold") @db.Decimal(10, 2)
+  phValue          Decimal?  @map("ph_value") @db.Decimal(4, 2)
+  expiryDate       DateTime? @map("expiry_date") @db.Date
+  imageUrl         String?   @map("image_url") @db.VarChar(500)
+  hazCon           HazCon[]
+  propCon          PropCon[]
+
+  @@map("consumables")
+}
+
+model HazCon {
+  consumableId Int         @map("consumable_id")
+  hazardId     Int         @map("hazard_id")
+  consumable   Consumables @relation(fields: [consumableId], references: [consumableId])
+  hazard       Hazards     @relation(fields: [hazardId], references: [hazardId])
+
+  @@id([consumableId, hazardId])
+  @@index([hazardId], map: "haz_con_hazard_id_fkey")
+  @@map("haz_con")
+}
+
+model PropCon {
+  consumableId Int                  @map("consumable_id")
+  propertyId   Int                  @map("property_id")
+  consumable   Consumables          @relation(fields: [consumableId], references: [consumableId])
+  property     ConsumableProperties @relation(fields: [propertyId], references: [propertyId])
+
+  @@id([consumableId, propertyId])
+  @@index([propertyId], map: "prop_con_property_id_fkey")
+  @@map("prop_con")
+}
+
+model Requests {
+  requestId     Int                    @id @default(autoincrement()) @map("request_id")
+  requesterId   Int                    @map("requester_id")
+  assignedTo    Int?                   @map("assigned_to")
+  type          RequestType
+  title         String                 @db.VarChar(150)
+  description   String?                @db.VarChar(250)
+  status        RequestStatus          @default(open)
+  priority      String?                @default("medium") @db.VarChar(10)
+  equipmentId   Int?                   @map("equipment_id")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime?              @default(now()) @updatedAt @map("updated_at")
+  closedAt      DateTime?              @map("closed_at")
+  statusHistory RequestStatusHistory[]
+  assignee      Users?                 @relation("RequestAssignee", fields: [assignedTo], references: [userId])
+  equipment     Equipments?            @relation(fields: [equipmentId], references: [equipmentId])
+  requester     Users                  @relation("RequestRequester", fields: [requesterId], references: [userId])
+
+  @@index([assignedTo], map: "requests_assigned_to_fkey")
+  @@index([equipmentId], map: "requests_equipment_id_fkey")
+  @@index([requesterId], map: "requests_requester_id_fkey")
+  @@map("requests")
+}
+
+model RequestStatusHistory {
+  historyId Int      @id @default(autoincrement()) @map("history_id")
+  requestId Int      @map("request_id")
+  oldStatus String?  @map("old_status") @db.VarChar(20)
+  newStatus String?  @map("new_status") @db.VarChar(20)
+  changedBy Int?     @map("changed_by")
+  changedAt DateTime @default(now()) @map("changed_at")
+  changer   Users?   @relation("StatusChanger", fields: [changedBy], references: [userId])
+  request   Requests @relation(fields: [requestId], references: [requestId])
+
+  @@index([changedBy], map: "request_status_history_changed_by_fkey")
+  @@index([requestId], map: "request_status_history_request_id_fkey")
+  @@map("request_status_history")
+}
 
 enum UserRoles {
   member
@@ -16,17 +195,18 @@ enum UserRoles {
   lab_manager
 }
 
-model Users {
-  userId      Int       @id @default(autoincrement()) @map("user_id")
-  firstName   String    @map("first_name") @db.VarChar(100)
-  lastName    String    @map("last_name") @db.VarChar(100)
-  role        UserRoles  @default(member)
-  email       String    @unique @db.VarChar(255)
-  googleId    String?   @unique @map("google_id") @db.VarChar(255)
-  avatarUrl   String?   @map("avatar_url") @db.VarChar(500)
-  createdAt   DateTime  @default(now()) @map("created_at")
-  lastLoginAt DateTime? @map("last_login_at")
-  active      Boolean   @default(true)
+enum RequestType {
+  borrow
+  maintenance
+  calibration
+  repair
+  other
+}
 
-  @@map("users")
+enum RequestStatus {
+  open
+  in_progress
+  resolved
+  closed
+  rejected
 }

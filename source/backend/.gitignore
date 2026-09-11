@@ -33,3 +33,6 @@ Thumbs.db
 .cursor/skills/
 skills-lock.json
 prisma-next.md
+
+# extras
+public/userImages/*

@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const path = require('path');
 
 const { prisma } = require('./lib/prisma');
 
@@ -27,6 +28,7 @@ app.use(cookieParser());
 // Mount User API Routes
 app.use('/api/users', userRoutes);
 app.use('/auth', authRoutes);
+app.use('/userImages', express.static(path.join(__dirname, 'public', 'userImages')));
 
 
 // Simple Health Check Route
