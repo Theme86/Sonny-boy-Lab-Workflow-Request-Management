@@ -1,0 +1,474 @@
+// ============================================
+// VASE LAB — Workflow & Request Management
+// Prisma schema (MySQL)
+// ============================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  member
+  ta
+  lecturer
+  lab_manager
+
+  @@map("user_role")
+}
+
+enum SessionStatus {
+  pending_approval
+  approved
+  rejected
+  scheduled
+  in_progress
+  completed
+  cancelled
+
+  @@map("session_status")
+}
+
+enum RequestType {
+  maintenance
+  access_permission
+  consumable_order
+  equipment_reservation
+  ticket
+
+  @@map("request_type")
+}
+
+enum RequestStatus {
+  open
+  in_review
+  approved
+  in_progress
+  blocked
+  completed
+  rejected
+  closed
+
+  @@map("request_status")
+}
+
+enum ResourceType {
+  room
+  equipment
+  software
+
+  @@map("resource_type")
+}
+
+// ============================================
+// USERS
+// ============================================
+
+model User {
+  userId      Int       @id @default(autoincrement()) @map("user_id")
+  firstName   String    @map("first_name") @db.VarChar(100)
+  lastName    String    @map("last_name") @db.VarChar(100)
+  role        UserRole  @default(member)
+  email       String    @unique @db.VarChar(255)
+  googleId    String?   @unique @map("google_id") @db.VarChar(255)
+  avatarUrl   String?   @map("avatar_url") @db.VarChar(500)
+  bannerUrl   String? @map("banner_url") @db.VarChar(500)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastLoginAt DateTime? @map("last_login_at")
+  active      Boolean   @default(true)
+
+  ownedProjects        Project[]
+  sessionsRequested    LabSession[]          @relation("SessionRequestedBy")
+  sessionsApproved     LabSession[]          @relation("SessionApprovedBy")
+  sessionParticipation SessionParticipant[]
+  requestsCreated      Request[]             @relation("RequestRequester")
+  requestsAssigned     Request[]             @relation("RequestAssignee")
+  statusChanges        RequestStatusHistory[]
+  notifications        Notification[]
+
+  @@map("users")
+}
+
+// ============================================
+// LAB ROOMS
+// ============================================
+
+model LabRoom {
+  roomId   Int     @id @default(autoincrement()) @map("room_id")
+  name     String  @db.VarChar(100)
+  capacity Int?
+  location String? @db.VarChar(100)
+
+  sessions LabSession[]
+
+  @@map("lab_rooms")
+}
+
+// ============================================
+// PROJECTS
+// ============================================
+
+model Project {
+  projectId Int     @id @default(autoincrement()) @map("project_id")
+  name      String  @db.VarChar(150)
+  type      String? @db.VarChar(30)
+  ownerId   Int?    @map("owner_id")
+
+  owner    User?        @relation(fields: [ownerId], references: [userId])
+  sessions LabSession[]
+
+  @@index([ownerId])
+  @@map("projects")
+}
+
+// ============================================
+// LAB SESSIONS
+// status   = workflow lifecycle
+// archived = independent visibility flag (does NOT overload status)
+//
+// Not expressible in Prisma — add via raw SQL migration:
+//   CHECK (requested_end > requested_start)
+//   CHECK (actual_end IS NULL OR actual_start IS NULL OR actual_end > actual_start)
+//
+// Collision prevention: enforce in app code with a transaction +
+// SELECT ... FOR UPDATE, checking overlapping requested_start/requested_end
+// for the same room_id among status IN (approved, scheduled, in_progress).
+// ============================================
+
+model LabSession {
+  labSessionId   Int           @id @default(autoincrement()) @map("lab_session_id")
+  name           String        @db.VarChar(150)
+  description    String?       @db.VarChar(250)
+  projectId      Int?          @map("project_id")
+  roomId         Int           @map("room_id")
+  status         SessionStatus @default(pending_approval)
+  archived       Boolean       @default(false)
+  requestedBy    Int           @map("requested_by")
+  approvedBy     Int?          @map("approved_by")
+  requestedStart DateTime      @map("requested_start")
+  requestedEnd   DateTime      @map("requested_end")
+  actualStart    DateTime?     @map("actual_start")
+  actualEnd      DateTime?     @map("actual_end")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime?     @default(now()) @updatedAt @map("updated_at")
+
+  project     Project?  @relation(fields: [projectId], references: [projectId])
+  room        LabRoom   @relation(fields: [roomId], references: [roomId])
+  requester   User      @relation("SessionRequestedBy", fields: [requestedBy], references: [userId])
+  approver    User?     @relation("SessionApprovedBy", fields: [approvedBy], references: [userId])
+
+  participants  SessionParticipant[]
+  equipment     LabSessionEquipment[]
+  consumables   LabSessionConsumable[]
+  notifications Notification[]
+
+  @@index([projectId])
+  @@index([requestedBy])
+  @@index([approvedBy])
+  @@index([roomId, requestedStart, requestedEnd])
+  @@map("lab_sessions")
+}
+
+model SessionParticipant {
+  labSessionId Int      @map("lab_session_id")
+  userId       Int      @map("user_id")
+  // CHECK (session_role IN ('supervisor', 'attendee', 'assistant')) — add via raw SQL
+  sessionRole  String   @map("session_role") @db.VarChar(20)
+  attended     Boolean? @default(false)
+
+  session LabSession @relation(fields: [labSessionId], references: [labSessionId])
+  user    User       @relation(fields: [userId], references: [userId])
+
+  @@id([labSessionId, userId])
+  @@index([userId])
+  @@map("session_participants")
+}
+
+model LabSessionEquipment {
+  labSessionId     Int     @map("lab_session_id")
+  equipmentId      Int     @map("equipment_id")
+  quantityReserved Int     @map("quantity_reserved")
+  quantityReturned Int?    @map("quantity_returned")
+  conditionNotes   String? @map("condition_notes") @db.VarChar(250)
+
+  session   LabSession @relation(fields: [labSessionId], references: [labSessionId])
+  equipment Equipment  @relation(fields: [equipmentId], references: [equipmentId])
+
+  @@id([labSessionId, equipmentId])
+  @@index([equipmentId])
+  @@map("lab_session_equipment")
+}
+
+model LabSessionConsumable {
+  labSessionId    Int      @map("lab_session_id")
+  consumableId    Int      @map("consumable_id")
+  quantityPlanned Decimal  @map("quantity_planned") @db.Decimal(10, 2)
+  quantityUsed    Decimal? @map("quantity_used") @db.Decimal(10, 2)
+
+  session    LabSession @relation(fields: [labSessionId], references: [labSessionId])
+  consumable Consumable @relation(fields: [consumableId], references: [consumableId])
+
+  @@id([labSessionId, consumableId])
+  @@index([consumableId])
+  @@map("lab_session_consumables")
+}
+
+// ============================================
+// EQUIPMENT
+// ============================================
+
+model EquipmentCategory {
+  categoryId  Int     @id @default(autoincrement()) @map("category_id")
+  name        String  @db.VarChar(150)
+  description String? @db.VarChar(250)
+
+  equipments Equipment[]
+
+  @@map("equipment_categories")
+}
+
+model EquipmentProperty {
+  propertyId  Int     @id @default(autoincrement()) @map("property_id")
+  name        String  @db.VarChar(150)
+  description String? @db.VarChar(250)
+
+  equipments PropEquip[]
+
+  @@map("equipment_property")
+}
+
+// CHECK (quantity_available <= quantity_total) — add via raw SQL
+model Equipment {
+  equipmentId       Int     @id @default(autoincrement()) @map("equipment_id")
+  name              String  @db.VarChar(150)
+  description       String? @db.VarChar(250)
+  categoryId        Int?    @map("category_id")
+  quantityTotal     Int     @default(0) @map("quantity_total")
+  quantityAvailable Int     @default(0) @map("quantity_available")
+  location          String? @db.VarChar(100)
+  imageUrl          String? @map("image_url") @db.VarChar(500)
+
+  category EquipmentCategory? @relation(fields: [categoryId], references: [categoryId])
+
+  properties           PropEquip[]
+  sessionEquipment     LabSessionEquipment[]
+  requests             Request[]
+  reservationDetails   EquipmentReservationDetail[]
+
+  @@index([categoryId])
+  @@map("equipments")
+}
+
+model PropEquip {
+  equipmentId Int @map("equipment_id")
+  propertyId  Int @map("property_id")
+
+  equipment Equipment         @relation(fields: [equipmentId], references: [equipmentId])
+  property  EquipmentProperty @relation(fields: [propertyId], references: [propertyId])
+
+  @@id([equipmentId, propertyId])
+  @@index([propertyId])
+  @@map("prop_equip")
+}
+
+// ============================================
+// CONSUMABLES
+// ============================================
+
+model Hazard {
+  hazardId    Int     @id @default(autoincrement()) @map("hazard_id")
+  name        String  @db.VarChar(150)
+  description String? @db.VarChar(250)
+
+  consumables HazCon[]
+
+  @@map("hazards")
+}
+
+model ConsumableProperty {
+  propertyId  Int     @id @default(autoincrement()) @map("property_id")
+  name        String  @db.VarChar(150)
+  description String? @db.VarChar(250)
+
+  consumables PropCon[]
+
+  @@map("consumable_property")
+}
+
+model Consumable {
+  consumableId     Int       @id @default(autoincrement()) @map("consumable_id")
+  name             String    @db.VarChar(150)
+  description      String?   @db.VarChar(250)
+  // CHECK (unit IN ('ml','l','g','kg','pieces')) — add via raw SQL
+  unit             String    @db.VarChar(10)
+  currentStock     Decimal   @default(0) @map("current_stock") @db.Decimal(10, 2)
+  reorderThreshold Decimal   @default(0) @map("reorder_threshold") @db.Decimal(10, 2)
+  phValue          Decimal?  @map("ph_value") @db.Decimal(4, 2)
+  expiryDate       DateTime? @map("expiry_date") @db.Date
+  imageUrl         String?   @map("image_url") @db.VarChar(500)
+
+  hazards         HazCon[]
+  properties      PropCon[]
+  sessionUsage    LabSessionConsumable[]
+  orderItems      ConsumableOrderItem[]
+
+  @@map("consumables")
+}
+
+model HazCon {
+  consumableId Int @map("consumable_id")
+  hazardId     Int @map("hazard_id")
+
+  consumable Consumable @relation(fields: [consumableId], references: [consumableId])
+  hazard     Hazard     @relation(fields: [hazardId], references: [hazardId])
+
+  @@id([consumableId, hazardId])
+  @@index([hazardId])
+  @@map("haz_con")
+}
+
+model PropCon {
+  consumableId Int @map("consumable_id")
+  propertyId   Int @map("property_id")
+
+  consumable Consumable         @relation(fields: [consumableId], references: [consumableId])
+  property   ConsumableProperty @relation(fields: [propertyId], references: [propertyId])
+
+  @@id([consumableId, propertyId])
+  @@index([propertyId])
+  @@map("prop_con")
+}
+
+// ============================================
+// REQUESTS (generic pipeline: maintenance, access, consumable orders,
+// equipment reservation, tickets)
+// ============================================
+
+model Request {
+  requestId   Int           @id @default(autoincrement()) @map("request_id")
+  requesterId Int           @map("requester_id")
+  assignedTo  Int?          @map("assigned_to")
+  type        RequestType
+  title       String        @db.VarChar(150)
+  description String?       @db.VarChar(250)
+  status      RequestStatus @default(open)
+  priority    String?       @default("medium") @db.VarChar(10)
+  // nullable, used by maintenance/calibration requests
+  equipmentId Int?          @map("equipment_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime?     @default(now()) @updatedAt @map("updated_at")
+  closedAt    DateTime?     @map("closed_at")
+
+  requester User       @relation("RequestRequester", fields: [requesterId], references: [userId])
+  assignee  User?      @relation("RequestAssignee", fields: [assignedTo], references: [userId])
+  equipment Equipment? @relation(fields: [equipmentId], references: [equipmentId])
+
+  statusHistory        RequestStatusHistory[]
+  consumableOrderItems ConsumableOrderItem[]
+  accessDetail         AccessPermissionDetail?
+  reservationDetail    EquipmentReservationDetail?
+  notifications        Notification[]
+
+  @@index([requesterId])
+  @@index([assignedTo])
+  @@index([equipmentId])
+  @@index([type, status])
+  @@map("requests")
+}
+
+model RequestStatusHistory {
+  historyId Int      @id @default(autoincrement()) @map("history_id")
+  requestId Int      @map("request_id")
+  oldStatus String?  @map("old_status") @db.VarChar(20)
+  newStatus String?  @map("new_status") @db.VarChar(20)
+  changedBy Int?     @map("changed_by")
+  changedAt DateTime @default(now()) @map("changed_at")
+
+  request Request @relation(fields: [requestId], references: [requestId])
+  changer User?   @relation(fields: [changedBy], references: [userId])
+
+  @@index([requestId])
+  @@index([changedBy])
+  @@map("request_status_history")
+}
+
+// --- type = consumable_order detail (1-to-many) ---
+model ConsumableOrderItem {
+  orderItemId       Int      @id @default(autoincrement()) @map("order_item_id")
+  requestId         Int      @map("request_id")
+  consumableId      Int      @map("consumable_id")
+  quantityRequested Decimal  @map("quantity_requested") @db.Decimal(10, 2)
+  quantityApproved  Decimal? @map("quantity_approved") @db.Decimal(10, 2)
+
+  request    Request    @relation(fields: [requestId], references: [requestId])
+  consumable Consumable @relation(fields: [consumableId], references: [consumableId])
+
+  @@index([requestId])
+  @@index([consumableId])
+  @@map("consumable_order_items")
+}
+
+// --- type = access_permission detail (1-to-1) ---
+model AccessPermissionDetail {
+  requestId    Int          @id @map("request_id")
+  resourceType ResourceType @map("resource_type")
+  resourceId   Int?         @map("resource_id")
+  expiresAt    DateTime?    @map("expires_at")
+
+  request Request @relation(fields: [requestId], references: [requestId])
+
+  @@map("access_permission_details")
+}
+
+// --- type = equipment_reservation detail (1-to-1) ---
+// tracks borrow/checkout lifecycle without a separate checkout log table
+model EquipmentReservationDetail {
+  requestId    Int       @id @map("request_id")
+  equipmentId  Int       @map("equipment_id")
+  quantity     Int
+  checkedOutAt DateTime? @map("checked_out_at")
+  dueAt        DateTime? @map("due_at")
+  // NULL = still checked out / in use
+  returnedAt   DateTime? @map("returned_at")
+
+  request   Request   @relation(fields: [requestId], references: [requestId])
+  equipment Equipment @relation(fields: [equipmentId], references: [equipmentId])
+
+  @@index([equipmentId])
+  @@map("equipment_reservation_details")
+}
+
+// ============================================
+// NOTIFICATIONS
+// Exactly one of request_id / lab_session_id must be set.
+// Enforce at app level or via CHECK constraint (MySQL 8.0.16+) in a raw SQL migration.
+// notif_type CHECK (IN ('status_change','approval_needed','new_comment','reminder','low_stock'))
+// ============================================
+
+model Notification {
+  notificationId Int      @id @default(autoincrement()) @map("notification_id")
+  userId         Int      @map("user_id")
+  requestId      Int?     @map("request_id")
+  labSessionId   Int?     @map("lab_session_id")
+  message        String   @db.VarChar(255)
+  notifType      String?  @map("notif_type") @db.VarChar(30)
+  isRead         Boolean  @default(false) @map("is_read")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user    User        @relation(fields: [userId], references: [userId])
+  request Request?    @relation(fields: [requestId], references: [requestId])
+  session LabSession? @relation(fields: [labSessionId], references: [labSessionId])
+
+  @@index([userId, isRead])
+  @@index([requestId])
+  @@index([labSessionId])
+  @@map("notifications")
+}

@@ -12,7 +12,7 @@ router.get('/:id', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Invalid user id' });
   }
 
-  const user = await prisma.users.findUnique({
+  const user = await prisma.user.findUnique({
     where: { userId },
     select: {
       userId: true,
