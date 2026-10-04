@@ -19,17 +19,20 @@ export default function ConsumablesPage() {
   const [consumables, setConsumables] = useState<Consumable[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('');
   const [currentStock, setCurrentStock] = useState('');
   const [reorderThreshold, setReorderThreshold] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const canManage = user?.role === 'lab_manager' || user?.role === 'lecturer';
 
   const fetchConsumables = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/consumables`, {
+      const params = searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : '';
+      const res = await fetch(`${API_URL}/api/consumables${params}`, {
         credentials: 'include',
       });
       if (!res.ok) throw new Error(`Failed to load (status ${res.status})`);
@@ -45,13 +48,36 @@ export default function ConsumablesPage() {
     fetchConsumables();
   }, [user]);
 
-  async function handleAddConsumable(e: FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setName('');
+    setUnit('');
+    setCurrentStock('');
+    setReorderThreshold('');
+    setSubmitError(null);
+  }
+
+  function startEdit(item: Consumable) {
+    setEditingId(item.consumableId);
+    setName(item.name);
+    setUnit(item.unit);
+    setCurrentStock(String(item.currentStock));
+    setReorderThreshold(String(item.reorderThreshold));
+    setSubmitError(null);
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitError(null);
 
+    const isEditing = editingId !== null;
+    const url = isEditing
+      ? `${API_URL}/api/consumables/${editingId}`
+      : `${API_URL}/api/consumables`;
+
     try {
-      const res = await fetch(`${API_URL}/api/consumables`, {
-        method: 'POST',
+      const res = await fetch(url, {
+        method: isEditing ? 'PUT' : 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -64,16 +90,35 @@ export default function ConsumablesPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? `Failed to add (status ${res.status})`);
+        throw new Error(err.error ?? `Request failed (status ${res.status})`);
       }
 
-      setName('');
-      setUnit('');
-      setCurrentStock('');
-      setReorderThreshold('');
+      resetForm();
       fetchConsumables();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Something went wrong');
+    }
+  }
+
+  async function handleDelete(id: number) {
+    const confirmed = window.confirm('Delete this consumable?');
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/consumables/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!res.ok && res.status !== 204) {
+        const err = await res.json();
+        throw new Error(err.error ?? `Delete failed (status ${res.status})`);
+      }
+
+      if (editingId === id) resetForm();
+      fetchConsumables();
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : 'Something went wrong');
     }
   }
 
@@ -84,17 +129,29 @@ export default function ConsumablesPage() {
   const cellStyle = { padding: '8px 16px', textAlign: 'left' as const };
 
   return (
+
+
     <div style={{ padding: 32 }}>
+          <input
+      placeholder="Search by name"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+    />
+    <button onClick={fetchConsumables}>Search</button>
+
       <h1>Consumables</h1>
       {fetchError && <p style={{ color: 'red' }}>{fetchError}</p>}
 
       {canManage && (
-        <form onSubmit={handleAddConsumable} style={{ marginBottom: 24, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <form onSubmit={handleSubmit} style={{ marginBottom: 24, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
           <input placeholder="Unit (e.g. ml, g)" value={unit} onChange={(e) => setUnit(e.target.value)} required />
           <input placeholder="Current Stock" type="number" value={currentStock} onChange={(e) => setCurrentStock(e.target.value)} />
           <input placeholder="Reorder Threshold" type="number" value={reorderThreshold} onChange={(e) => setReorderThreshold(e.target.value)} />
-          <button type="submit">Add</button>
+          <button type="submit">{editingId !== null ? 'Save' : 'Add'}</button>
+          {editingId !== null && (
+            <button type="button" onClick={resetForm}>Cancel</button>
+          )}
           {submitError && <p style={{ color: 'red', width: '100%' }}>{submitError}</p>}
         </form>
       )}
@@ -107,6 +164,7 @@ export default function ConsumablesPage() {
             <th style={cellStyle}>Current Stock</th>
             <th style={cellStyle}>Reorder Threshold</th>
             <th style={cellStyle}>Expiry Date</th>
+            {canManage && <th style={cellStyle}>Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -119,6 +177,13 @@ export default function ConsumablesPage() {
                 <td style={cellStyle}>{item.currentStock}</td>
                 <td style={cellStyle}>{item.reorderThreshold}</td>
                 <td style={cellStyle}>{item.expiryDate ?? '-'}</td>
+                {canManage && (
+                  <td style={cellStyle}>
+                    <button type="button" onClick={() => startEdit(item)}>Edit</button>
+                    {' '}
+                    <button type="button" onClick={() => handleDelete(item.consumableId)}>Delete</button>
+                  </td>
+                )}
               </tr>
             );
           })}
