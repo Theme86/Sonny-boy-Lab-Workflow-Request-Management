@@ -66,13 +66,6 @@ export const ROLE_LABELS: Record<Role, string> = {
   lab_manager: 'Lab Manager',
 };
 
-export const ROLE_STYLES: Record<Role, string> = {
-  member: 'bg-zinc-100 text-zinc-700 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700',
-  ta: 'bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-950 dark:text-sky-300 dark:ring-sky-800',
-  lecturer: 'bg-violet-50 text-violet-700 ring-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:ring-violet-800',
-  lab_manager: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-800',
-};
-
 export function fullName(user: Pick<User, 'firstName' | 'lastName' | 'email'>): string {
   const name = `${user.firstName} ${user.lastName}`.trim();
   return name || user.email;

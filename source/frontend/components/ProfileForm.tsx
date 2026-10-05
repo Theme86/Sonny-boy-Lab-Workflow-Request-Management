@@ -7,9 +7,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Avatar } from '@/components/Avatar';
-import { buttonStyles } from '@/components/ProfileCard';
+import { ArrowBackIcon, CameraIcon, VaseMark } from '@/components/icons';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { apiFetch, imageUrl } from '@/lib/api';
+import { ui } from '@/lib/ui';
 import { PROFILE_LIMITS, ROLE_LABELS, validateProfile, type ProfileFields, type User } from '@/lib/users';
 
 const AVATAR_MAX_MB = 2;
@@ -19,8 +20,8 @@ const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 type FieldErrors = Partial<Record<keyof ProfileFields | 'avatar' | 'banner', string>>;
 
 function validateImage(file: File, maxMb: number): string | null {
-  if (!ACCEPTED_TYPES.includes(file.type)) return 'Please choose a JPG, PNG or WEBP image.';
-  if (file.size > maxMb * 1024 * 1024) return `The image must be ${maxMb} MB or smaller.`;
+  if (!ACCEPTED_TYPES.includes(file.type)) return 'Choose a JPG, PNG or WEBP image.';
+  if (file.size > maxMb * 1024 * 1024) return `Choose an image of ${maxMb} MB or less.`;
   return null;
 }
 
@@ -45,13 +46,13 @@ function fieldsFrom(user: User): ProfileFields {
   };
 }
 
+const EMPTY_FIELDS: ProfileFields = { firstName: '', lastName: '', studentId: '', phone: '', department: '', bio: '' };
+
 export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
   const { user, setUser } = useCurrentUser();
   const router = useRouter();
 
-  const [fields, setFields] = useState<ProfileFields>(() =>
-    user ? fieldsFrom(user) : { firstName: '', lastName: '', studentId: '', phone: '', department: '', bio: '' },
-  );
+  const [fields, setFields] = useState<ProfileFields>(() => (user ? fieldsFrom(user) : EMPTY_FIELDS));
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -92,6 +93,11 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
     if (!error) readAsDataUrl(file).then(setAvatarPreview).catch(() => {});
   }
 
+  function clearAvatar() {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+  }
+
   function pickBanner(file: File | undefined) {
     setSaved(false);
     if (!file) return;
@@ -116,7 +122,7 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
     setSaving(true);
     let latest: User = user!;
     try {
-      // Upload images first so a failed upload doesn't mark the profile as complete.
+      // Upload images first so a failed upload doesn't mark the profile as created.
       if (avatarFile) {
         latest = await apiFetch<User>('/api/users/me/avatar', {
           method: 'PUT',
@@ -124,8 +130,7 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
           body: avatarFile,
         });
         setUser(latest);
-        setAvatarFile(null);
-        setAvatarPreview(null);
+        clearAvatar();
       }
       if (bannerFile) {
         latest = await apiFetch<User>('/api/users/me/banner', {
@@ -157,219 +162,227 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
       setFields(fieldsFrom(latest));
       setSaved(true);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not save your profile');
+      setFormError(err instanceof Error ? err.message : 'Your profile could not be saved. Try again.');
     } finally {
       setSaving(false);
     }
   }
 
-  const inputClass = (error?: string) =>
-    `mt-1 block w-full rounded-lg border bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:ring-2 dark:bg-zinc-950 dark:text-zinc-100 ${
-      error
-        ? 'border-red-400 focus:ring-red-200 dark:border-red-700 dark:focus:ring-red-900'
-        : 'border-zinc-300 focus:border-emerald-500 focus:ring-emerald-100 dark:border-zinc-700 dark:focus:ring-emerald-900'
-    }`;
-
-  function textField(key: keyof ProfileFields, label: string, opts: { placeholder?: string; autoComplete?: string; required?: boolean; hint?: string; inputMode?: 'text' | 'tel' } = {}) {
+  function textInput(key: keyof ProfileFields, label: string, opts: { placeholder?: string; autoComplete?: string; required?: boolean; hint?: string; type?: string } = {}) {
+    const max = key === 'firstName' || key === 'lastName' ? PROFILE_LIMITS.name : PROFILE_LIMITS[key as 'studentId' | 'phone' | 'department'];
     return (
       <Field label={label} required={opts.required} error={errors[key]} hint={opts.hint}>
         <input
+          type={opts.type ?? 'text'}
           value={fields[key]}
           onChange={(e) => setField(key, e.target.value)}
-          maxLength={PROFILE_LIMITS[key === 'firstName' || key === 'lastName' ? 'name' : (key as 'studentId' | 'phone' | 'department')]}
+          maxLength={max}
           placeholder={opts.placeholder}
           autoComplete={opts.autoComplete}
-          inputMode={opts.inputMode}
-          className={inputClass(errors[key])}
+          className={`${ui.input} ${errors[key] ? ui.inputError : ''}`}
           aria-invalid={!!errors[key]}
         />
       </Field>
     );
   }
 
-  return (
-    <form onSubmit={onSubmit} className="space-y-6" noValidate>
-      {/* Header */}
-      {isSetup ? (
-        <div className="rounded-2xl bg-linear-to-r from-emerald-600 to-teal-600 p-6 text-white sm:p-8">
-          <p className="text-sm font-medium text-emerald-100">Welcome to Vase Lab</p>
-          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Create your profile</h1>
-          <p className="mt-2 max-w-xl text-sm text-emerald-50">
-            Check your details so the lab team knows who you are. Only your name is required — you can change
-            everything later from <span className="font-semibold">Edit profile</span>.
-          </p>
-          <p className="mt-3 text-xs text-emerald-100">
-            Signed in as {user.email} · {ROLE_LABELS[user.role]}
-          </p>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Edit profile</h1>
-            <p className="mt-1 text-sm text-zinc-500">Update your details and how you appear to the lab.</p>
-          </div>
-          <Link href="/profile" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-            ← Back to profile
-          </Link>
-        </div>
-      )}
-
-      {/* Photo + name */}
-      <Section title="Basic information">
-        <div className="flex flex-col gap-6 sm:flex-row">
-          <div className="flex flex-col items-center gap-3 sm:w-44">
-            <Avatar user={user} size="xl" previewSrc={avatarPreview} />
-            <input
-              ref={avatarInput}
-              type="file"
-              accept={ACCEPTED_TYPES.join(',')}
-              className="hidden"
-              onChange={(e) => {
-                pickAvatar(e.target.files?.[0]);
-                e.target.value = '';
-              }}
-            />
-            <div className="flex gap-2">
-              <button type="button" className={buttonStyles.secondary} onClick={() => avatarInput.current?.click()}>
-                {user.avatarUrl || avatarFile ? 'Change photo' : 'Add photo'}
-              </button>
-              {avatarFile && (
-                <button
-                  type="button"
-                  className={buttonStyles.secondary}
-                  onClick={() => {
-                    setAvatarFile(null);
-                    setAvatarPreview(null);
-                  }}
-                >
-                  Undo
-                </button>
-              )}
-            </div>
-            <p className="text-center text-xs text-zinc-500">JPG, PNG or WEBP · up to {AVATAR_MAX_MB} MB</p>
-            {errors.avatar && <p className="text-center text-xs text-red-600">{errors.avatar}</p>}
-          </div>
-
-          <div className="grid flex-1 grid-cols-1 content-start gap-4 sm:grid-cols-2">
-            {textField('firstName', 'First name', { autoComplete: 'given-name', required: true })}
-            {textField('lastName', 'Last name', { autoComplete: 'family-name', required: true })}
-            <div className="sm:col-span-2">
-              <Field label="Email" hint="Comes from your Google account and can't be changed here.">
-                <input value={user.email} disabled className={`${inputClass()} cursor-not-allowed opacity-70`} />
-              </Field>
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      {/* Lab details */}
-      <Section
-        title="Lab details"
-        description="Your student / staff ID and phone number are only shown to you and the Lab Manager."
+  const photoPicker = (
+    <div className="flex items-center gap-5">
+      <button
+        type="button"
+        onClick={() => avatarInput.current?.click()}
+        className={`group relative rounded-full ${ui.focus}`}
+        aria-label={user.avatarUrl || avatarFile ? 'Change profile picture' : 'Add profile picture'}
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {textField('studentId', 'Student / staff ID', { placeholder: 'e.g. 6710545725' })}
-          {textField('phone', 'Phone number', { placeholder: 'e.g. 081-234-5678', autoComplete: 'tel', inputMode: 'tel' })}
-          <div className="sm:col-span-2">
-            {textField('department', 'Faculty / department / program', { placeholder: 'e.g. Software and Knowledge Engineering' })}
-          </div>
+        <Avatar user={user} size="lg" previewSrc={avatarPreview} />
+        <span className="absolute -right-1 -bottom-1 flex h-7 w-7 items-center justify-center rounded-full border border-[#dadce0] bg-white text-[#444746] group-hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:bg-[#1f1f1f] dark:text-[#e3e3e3]">
+          <CameraIcon width={16} height={16} />
+        </span>
+      </button>
+      <div className="min-w-0">
+        <p className="text-sm">Profile picture</p>
+        <p className={`text-xs ${ui.muted}`}>JPG, PNG or WEBP, up to {AVATAR_MAX_MB} MB</p>
+        {avatarFile && (
+          <button type="button" onClick={clearAvatar} className={`${ui.link} mt-1 text-xs`}>
+            Keep current picture
+          </button>
+        )}
+        {errors.avatar && <p className={`mt-1 text-xs ${ui.errorText}`}>{errors.avatar}</p>}
+      </div>
+      <input
+        ref={avatarInput}
+        type="file"
+        accept={ACCEPTED_TYPES.join(',')}
+        className="hidden"
+        onChange={(e) => {
+          pickAvatar(e.target.files?.[0]);
+          e.target.value = '';
+        }}
+      />
+    </div>
+  );
+
+  const nameFields = (
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {textInput('firstName', 'First name', { autoComplete: 'given-name', required: true })}
+      {textInput('lastName', 'Last name', { autoComplete: 'family-name', required: true })}
+    </div>
+  );
+
+  const labFields = (
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {textInput('studentId', 'Student / staff ID', { placeholder: '6710545725' })}
+      {textInput('phone', 'Phone number', { placeholder: '081 234 5678', autoComplete: 'tel', type: 'tel' })}
+      <div className="sm:col-span-2">
+        {textInput('department', 'Faculty / department', { placeholder: 'Software and Knowledge Engineering' })}
+      </div>
+    </div>
+  );
+
+  const bioField = (
+    <Field label="About" error={errors.bio} hint={`${fields.bio.trim().length} / ${PROFILE_LIMITS.bio}`}>
+      <textarea
+        value={fields.bio}
+        onChange={(e) => setField('bio', e.target.value)}
+        maxLength={PROFILE_LIMITS.bio}
+        rows={4}
+        placeholder="What you work on in the lab"
+        className={`${ui.input} resize-y ${errors.bio ? ui.inputError : ''}`}
+        aria-invalid={!!errors.bio}
+      />
+    </Field>
+  );
+
+  const errorBanner = formError && (
+    <p role="alert" className="rounded-lg bg-[#fce8e6] px-4 py-3 text-sm text-[#8c1d18] dark:bg-[#601410] dark:text-[#f9dedc]">
+      {formError}
+    </p>
+  );
+
+  // ---------- Create profile: one centred card, like an account sign-up step ----------
+  if (isSetup) {
+    return (
+      <form onSubmit={onSubmit} noValidate className={`mx-auto max-w-[520px] px-6 py-9 sm:px-10 sm:py-12 ${ui.card}`}>
+        <VaseMark width={32} height={32} className="text-[#1558b0] dark:text-[#a8c7fa]" />
+        <h1 className="mt-5 text-[28px] leading-9">Create your profile</h1>
+        <p className={`mt-2 text-base ${ui.muted}`}>
+          Tell the lab team who you are. Only your name is required; you can change everything later.
+        </p>
+        <p className={`mt-4 inline-flex rounded-full border px-3 py-1 text-sm ${ui.border}`}>
+          {user.email} ({ROLE_LABELS[user.role]})
+        </p>
+
+        <div className="mt-8 space-y-6">
+          {photoPicker}
+          {nameFields}
+          {labFields}
+          {bioField}
+          <p className={`text-xs ${ui.muted}`}>Your student / staff ID and phone number are only visible to you and the Lab Manager.</p>
+          {errorBanner}
         </div>
-      </Section>
 
-      {/* Bio */}
-      <Section title="About you">
-        <Field label="Short bio" error={errors.bio} hint={`${fields.bio.trim().length}/${PROFILE_LIMITS.bio} characters`}>
-          <textarea
-            value={fields.bio}
-            onChange={(e) => setField('bio', e.target.value)}
-            maxLength={PROFILE_LIMITS.bio}
-            rows={4}
-            placeholder="What you work on in the lab, your research interests…"
-            className={`${inputClass(errors.bio)} resize-y`}
-            aria-invalid={!!errors.bio}
+        <div className="mt-8 flex justify-end">
+          <button type="submit" className={ui.btnPrimary} disabled={saving}>
+            {saving ? 'Creating…' : 'Create profile'}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  // ---------- Edit profile ----------
+  return (
+    <form onSubmit={onSubmit} noValidate className="mx-auto max-w-3xl">
+      <div className="mb-6 flex items-center gap-2">
+        <Link href="/profile" aria-label="Back to personal info" className={`rounded-full p-2 ${ui.hover} ${ui.focus}`}>
+          <ArrowBackIcon />
+        </Link>
+        <h1 className="text-[22px] leading-7">Edit profile</h1>
+      </div>
+
+      <Section title="Profile picture and banner">
+        {photoPicker}
+        <div className="mt-6">
+          <div
+            className="h-24 rounded-lg bg-[#e8eaed] bg-cover bg-center sm:h-28 dark:bg-[#303134]"
+            style={bannerShown ? { backgroundImage: `url("${bannerShown}")` } : undefined}
+            role="img"
+            aria-label="Banner preview"
           />
-        </Field>
-      </Section>
-
-      {/* Banner */}
-      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div
-          className="h-32 bg-linear-to-r from-emerald-500 to-teal-600 bg-cover bg-center sm:h-40"
-          style={bannerShown ? { backgroundImage: `url("${bannerShown}")` } : undefined}
-          role="img"
-          aria-label="Banner preview"
-        />
-        <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Profile banner</h2>
-            <p className="text-xs text-zinc-500">Optional. JPG, PNG or WEBP, up to {BANNER_MAX_MB} MB. A wide image (about 3:1) looks best.</p>
-            {resetBanner && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">The default banner will be restored when you save.</p>}
-            {errors.banner && <p className="mt-1 text-xs text-red-600">{errors.banner}</p>}
-          </div>
-          <div className="flex gap-2">
-            <input
-              ref={bannerInput}
-              type="file"
-              accept={ACCEPTED_TYPES.join(',')}
-              className="hidden"
-              onChange={(e) => {
-                pickBanner(e.target.files?.[0]);
-                e.target.value = '';
-              }}
-            />
-            <button type="button" className={buttonStyles.secondary} onClick={() => bannerInput.current?.click()}>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <button type="button" className={ui.btnText} onClick={() => bannerInput.current?.click()}>
               Change banner
             </button>
             {bannerFile ? (
               <button
                 type="button"
-                className={buttonStyles.secondary}
+                className={ui.btnText}
                 onClick={() => {
                   setBannerFile(null);
                   setBannerPreview(null);
                 }}
               >
-                Undo
+                Keep current banner
               </button>
             ) : (
-              !resetBanner &&
-              !isSetup && (
+              !resetBanner && (
                 <button
                   type="button"
-                  className={buttonStyles.secondary}
+                  className={ui.btnText}
                   onClick={() => {
                     setResetBanner(true);
                     setSaved(false);
                   }}
                 >
-                  Use default
+                  Use default banner
                 </button>
               )
             )}
+            <span className={`text-xs ${ui.muted}`}>
+              {resetBanner ? 'The default banner will be used when you save.' : `Wide image, up to ${BANNER_MAX_MB} MB`}
+            </span>
           </div>
+          {errors.banner && <p className={`mt-1 text-xs ${ui.errorText}`}>{errors.banner}</p>}
+          <input
+            ref={bannerInput}
+            type="file"
+            accept={ACCEPTED_TYPES.join(',')}
+            className="hidden"
+            onChange={(e) => {
+              pickBanner(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
         </div>
-      </section>
+      </Section>
 
-      {formError && (
-        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-          {formError}
-        </p>
-      )}
+      <Section title="Basic info" description="Other people in the lab can see this information.">
+        <div className="space-y-5">
+          {nameFields}
+          <Field label="Email" hint="Managed by your Google account.">
+            <input value={user.email} disabled className={ui.input} />
+          </Field>
+          {bioField}
+        </div>
+      </Section>
 
-      {/* Actions */}
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <Section title="Contact info and ID" description="Only you and the Lab Manager can see your student / staff ID and phone number.">
+        {labFields}
+      </Section>
+
+      <div className="mt-6">{errorBanner}</div>
+
+      <div className={`sticky bottom-0 mt-6 flex items-center justify-end gap-2 border-t bg-white py-4 dark:bg-[#1f1f1f] ${ui.border}`}>
         {saved && !hasChanges && (
-          <span role="status" className="mr-auto text-sm font-medium text-emerald-700 dark:text-emerald-400">
-            ✓ Profile saved
+          <span role="status" className={`mr-auto text-sm ${ui.muted}`}>
+            Changes saved
           </span>
         )}
-        {!isSetup && (
-          <button type="button" className={buttonStyles.secondary} onClick={() => router.push('/profile')}>
-            {saved && !hasChanges ? 'Done' : 'Cancel'}
-          </button>
-        )}
-        <button type="submit" className={buttonStyles.primary} disabled={saving || (!isSetup && !hasChanges)}>
-          {saving ? 'Saving…' : isSetup ? 'Create profile' : 'Save changes'}
+        <Link href="/profile" className={ui.btnText}>
+          {saved && !hasChanges ? 'Done' : 'Cancel'}
+        </Link>
+        <button type="submit" className={ui.btnPrimary} disabled={saving || !hasChanges}>
+          {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
     </form>
@@ -378,10 +391,10 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
 
 function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
-      <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{title}</h2>
-      {description && <p className="mt-1 text-xs text-zinc-500">{description}</p>}
-      <div className="mt-4">{children}</div>
+    <section className={`mt-6 px-6 py-6 ${ui.card}`}>
+      <h2 className="text-[22px] leading-7">{title}</h2>
+      {description && <p className={`mt-1 text-sm ${ui.muted}`}>{description}</p>}
+      <div className="mt-5">{children}</div>
     </section>
   );
 }
@@ -389,15 +402,19 @@ function Section({ title, description, children }: { title: string; description?
 function Field({ label, required, error, hint, children }: { label: string; required?: boolean; error?: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+      <span className="mb-1.5 block text-sm font-medium">
         {label}
-        {required && <span className="text-red-600"> *</span>}
+        {required && (
+          <span className={ui.errorText} aria-hidden>
+            {' '}*
+          </span>
+        )}
       </span>
       {children}
       {error ? (
-        <span className="mt-1 block text-xs text-red-600">{error}</span>
+        <span className={`mt-1 block text-xs ${ui.errorText}`}>{error}</span>
       ) : (
-        hint && <span className="mt-1 block text-xs text-zinc-500">{hint}</span>
+        hint && <span className={`mt-1 block text-xs ${ui.muted}`}>{hint}</span>
       )}
     </label>
   );

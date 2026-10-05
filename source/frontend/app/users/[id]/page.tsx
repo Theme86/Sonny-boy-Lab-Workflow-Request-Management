@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
-import { buttonStyles, ProfileCard } from '@/components/ProfileCard';
+import { ArrowBackIcon } from '@/components/icons';
+import { ProfileDetails, ProfileHeader } from '@/components/ProfileView';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { apiFetch } from '@/lib/api';
+import { ui } from '@/lib/ui';
 import type { User } from '@/lib/users';
 
 export default function UserProfilePage() {
@@ -34,16 +36,29 @@ function UserProfile() {
     };
   }, [params.id]);
 
-  if (result?.id !== params.id) return <p className="py-16 text-center text-sm text-zinc-500">Loading profile…</p>;
-  const { user, error } = result;
+  const backHref = me?.role === 'lab_manager' ? '/users' : '/profile';
+  const backLabel = me?.role === 'lab_manager' ? 'Users' : 'Personal info';
 
+  const back = (
+    <Link href={backHref} className={`mb-6 inline-flex items-center gap-2 rounded-full py-2 pr-4 pl-2 text-sm ${ui.hover} ${ui.focus}`}>
+      <ArrowBackIcon />
+      {backLabel}
+    </Link>
+  );
+
+  if (result?.id !== params.id) {
+    return <p className={`py-16 text-center text-sm ${ui.muted}`}>Loading profile…</p>;
+  }
+
+  const { user, error } = result;
   if (error || !user) {
     return (
-      <div className="mx-auto max-w-md rounded-2xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">{error || 'User not found'}</p>
-        <Link href="/profile" className={`${buttonStyles.secondary} mt-6`}>
-          Back to my profile
-        </Link>
+      <div className="mx-auto max-w-3xl">
+        {back}
+        <div className="py-16 text-center">
+          <h1 className="text-[22px]">This profile isn&apos;t available</h1>
+          <p className={`mt-2 text-sm ${ui.muted}`}>{error || 'User not found'}</p>
+        </div>
       </div>
     );
   }
@@ -51,22 +66,19 @@ function UserProfile() {
   const isMe = me?.userId === user.userId;
 
   return (
-    <div className="space-y-4">
-      {me?.role === 'lab_manager' && (
-        <Link href="/users" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-          ← All users
-        </Link>
-      )}
-      <ProfileCard
+    <div className="mx-auto max-w-3xl">
+      {back}
+      <ProfileHeader
         user={user}
-        actions={
+        action={
           isMe ? (
-            <Link href="/profile/edit" className={buttonStyles.secondary}>
+            <Link href="/profile/edit" className={ui.btnOutline}>
               Edit profile
             </Link>
           ) : undefined
         }
       />
+      <ProfileDetails user={user} editable={isMe} />
     </div>
   );
 }

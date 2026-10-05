@@ -1,11 +1,10 @@
 // components/RoleBadge.tsx
-import { ROLE_LABELS, ROLE_STYLES, type Role } from '@/lib/users';
+import { ui } from '@/lib/ui';
+import { ROLE_LABELS, type Role } from '@/lib/users';
 
 export function RoleBadge({ role }: { role: Role }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${ROLE_STYLES[role]}`}
-    >
+    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${ui.border} ${ui.muted}`}>
       {ROLE_LABELS[role]}
     </span>
   );
@@ -13,13 +12,13 @@ export function RoleBadge({ role }: { role: Role }) {
 
 export function StatusBadge({ active }: { active: boolean }) {
   return active ? (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+    <span className="inline-flex items-center gap-2 text-sm">
+      <span className="h-2 w-2 rounded-full bg-[#1e8e3e]" aria-hidden />
       Active
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500">
-      <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" aria-hidden />
+    <span className={`inline-flex items-center gap-2 text-sm ${ui.muted}`}>
+      <span className="h-2 w-2 rounded-full bg-[#9aa0a6]" aria-hidden />
       Deactivated
     </span>
   );

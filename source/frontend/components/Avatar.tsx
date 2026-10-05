@@ -6,11 +6,20 @@ import { imageUrl } from '@/lib/api';
 import { initials, type User } from '@/lib/users';
 
 const SIZES = {
-  sm: 'h-8 w-8 text-xs',
-  md: 'h-10 w-10 text-sm',
-  lg: 'h-16 w-16 text-lg',
-  xl: 'h-28 w-28 text-3xl',
+  sm: 'h-8 w-8 text-sm',
+  md: 'h-10 w-10 text-base',
+  lg: 'h-16 w-16 text-2xl',
+  xl: 'h-24 w-24 text-4xl sm:h-28 sm:w-28',
 } as const;
+
+// Muted colors for the initials circle; each person always gets the same one.
+const COLORS = ['#3f5aa8', '#0f7068', '#7a5230', '#6a4a9c', '#2f6b3a', '#a4402f', '#455a64'];
+
+function colorFor(seed: string) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  return COLORS[Math.abs(hash) % COLORS.length];
+}
 
 type Props = {
   user: Pick<User, 'firstName' | 'lastName' | 'email' | 'avatarUrl'>;
@@ -27,7 +36,8 @@ export function Avatar({ user, size = 'md', previewSrc, className = '' }: Props)
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-100 font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100 ${SIZES[size]} ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-normal text-white select-none ${SIZES[size]} ${className}`}
+      style={showImage ? undefined : { backgroundColor: colorFor(user.email) }}
     >
       {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element -- images come from the backend, not the Next.js image optimizer

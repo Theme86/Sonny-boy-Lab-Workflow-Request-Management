@@ -6,21 +6,15 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Avatar } from '@/components/Avatar';
-import { buttonStyles } from '@/components/ProfileCard';
+import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from '@/components/icons';
 import { StatusBadge } from '@/components/RoleBadge';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { apiFetch } from '@/lib/api';
+import { ui } from '@/lib/ui';
 import { formatDate, fullName, ROLE_LABELS, ROLES, type Role, type User, type UserListResponse } from '@/lib/users';
 
 type SortKey = 'createdAt' | 'lastLoginAt' | 'email' | 'role' | 'name';
-
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: 'createdAt', label: 'Registered' },
-  { value: 'lastLoginAt', label: 'Last login' },
-  { value: 'name', label: 'Name' },
-  { value: 'email', label: 'Email' },
-  { value: 'role', label: 'Role' },
-];
+const PAGE_SIZE = 20;
 
 export default function UsersPage() {
   return (
@@ -35,11 +29,11 @@ function UsersGate() {
   if (!user) return null;
   if (user.role !== 'lab_manager') {
     return (
-      <div className="mx-auto max-w-md rounded-2xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Lab Manager only</p>
-        <p className="mt-2 text-sm text-zinc-500">You don&apos;t have permission to manage users.</p>
-        <Link href="/profile" className={`${buttonStyles.secondary} mt-6`}>
-          Back to my profile
+      <div className="mx-auto max-w-md py-16 text-center">
+        <h1 className="text-[22px]">You don&apos;t have access to this page</h1>
+        <p className={`mt-2 text-sm ${ui.muted}`}>Only the Lab Manager can manage users.</p>
+        <Link href="/profile" className={`${ui.btnOutline} mt-6`}>
+          Go to personal info
         </Link>
       </div>
     );
@@ -71,7 +65,7 @@ function UserManagement({ me }: { me: User }) {
   const q = useDebounced(search.trim());
 
   const queryKey = useMemo(() => {
-    const params = new URLSearchParams({ sort, order, status, page: String(page), pageSize: '20' });
+    const params = new URLSearchParams({ sort, order, status, page: String(page), pageSize: String(PAGE_SIZE) });
     if (q) params.set('q', q);
     if (role) params.set('role', role);
     return params.toString();
@@ -81,27 +75,41 @@ function UserManagement({ me }: { me: User }) {
     let cancelled = false;
     apiFetch<UserListResponse>(`/api/users?${queryKey}`)
       .then((data) => !cancelled && setResult({ key: queryKey, data }))
-      .catch((err) => !cancelled && setResult({ key: queryKey, error: err.message ?? 'Could not load users' }));
+      .catch((err) => !cancelled && setResult({ key: queryKey, error: err.message ?? 'Users could not be loaded' }));
     return () => {
       cancelled = true;
     };
   }, [queryKey]);
 
+  // the notice disappears by itself after a few seconds
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(''), 5000);
+    return () => clearTimeout(t);
+  }, [notice]);
+
   const loading = result?.key !== queryKey;
   const data = result?.data ?? null; // keeps showing the previous page while the next one loads
   const error = loading ? '' : (result?.error ?? '');
 
-  // Any filter change sends you back to page 1
-  function updateFilter<T>(setter: (v: T) => void) {
+  function resetPage<T>(setter: (v: T) => void) {
     return (v: T) => {
       setter(v);
       setPage(1);
     };
   }
-  const setSearchAndReset = updateFilter(setSearch);
-  const setRoleAndReset = updateFilter(setRole);
-  const setStatusAndReset = updateFilter(setStatus);
-  const setSortAndReset = updateFilter(setSort);
+  const changeSearch = resetPage(setSearch);
+  const changeRole = resetPage(setRole);
+  const changeStatus = resetPage(setStatus);
+
+  function sortBy(key: SortKey) {
+    if (key === sort) setOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+    else {
+      setSort(key);
+      setOrder(key === 'createdAt' || key === 'lastLoginAt' ? 'desc' : 'asc');
+    }
+    setPage(1);
+  }
 
   function replaceUser(updated: User) {
     setResult((r) =>
@@ -109,18 +117,17 @@ function UserManagement({ me }: { me: User }) {
     );
   }
 
-  async function changeRole(target: User, newRole: Role) {
+  async function updateRole(target: User, newRole: Role) {
     if (newRole === target.role) return;
-    const ok = window.confirm(`Change ${fullName(target)}'s role from ${ROLE_LABELS[target.role]} to ${ROLE_LABELS[newRole]}?`);
+    const ok = window.confirm(`Change ${fullName(target)} from ${ROLE_LABELS[target.role]} to ${ROLE_LABELS[newRole]}?`);
     if (!ok) return;
     setBusyId(target.userId);
-    setNotice('');
     try {
       const updated = await apiFetch<User>(`/api/users/${target.userId}/role`, { method: 'PATCH', json: { role: newRole } });
       replaceUser(updated);
-      setNotice(`${fullName(updated)} is now ${ROLE_LABELS[updated.role]}.`);
+      setNotice(`${fullName(updated)} is now ${ROLE_LABELS[updated.role]}`);
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : 'Could not change role');
+      setNotice(err instanceof Error ? err.message : 'The role could not be changed');
     } finally {
       setBusyId(null);
     }
@@ -131,46 +138,46 @@ function UserManagement({ me }: { me: User }) {
     const ok = window.confirm(
       next
         ? `Reactivate ${fullName(target)}? They will be able to sign in again.`
-        : `Deactivate ${fullName(target)}? They will no longer be able to sign in.`,
+        : `Deactivate ${fullName(target)}? They won't be able to sign in until you reactivate them.`,
     );
     if (!ok) return;
     setBusyId(target.userId);
-    setNotice('');
     try {
       const updated = await apiFetch<User>(`/api/users/${target.userId}/active`, { method: 'PATCH', json: { active: next } });
       replaceUser(updated);
-      setNotice(`${fullName(updated)} was ${updated.active ? 'reactivated' : 'deactivated'}.`);
+      setNotice(`${fullName(updated)} ${updated.active ? 'reactivated' : 'deactivated'}`);
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : 'Could not update the account');
+      setNotice(err instanceof Error ? err.message : 'The account could not be updated');
     } finally {
       setBusyId(null);
     }
   }
 
-  const controlClass =
-    'rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-emerald-900';
+  const first = data && data.total > 0 ? (data.page - 1) * data.pageSize + 1 : 0;
+  const last = data ? Math.min(data.page * data.pageSize, data.total) : 0;
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Users</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Everyone who has signed in to the lab system. Give new lecturers and TAs their role here.
-        </p>
+    <div className="mx-auto max-w-5xl">
+      <div className="mb-6">
+        <h1 className="text-[28px] leading-9">Users</h1>
+        <p className={`mt-1 text-base ${ui.muted}`}>Everyone who has signed in to the lab system. Give new lecturers and TAs their role here.</p>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 lg:flex-row lg:items-center dark:border-zinc-800 dark:bg-zinc-900">
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearchAndReset(e.target.value)}
-          placeholder="Search name, email, ID or department…"
-          className={`${controlClass} lg:flex-1`}
-          aria-label="Search users"
-        />
-        <div className="grid grid-cols-2 gap-3 sm:flex">
-          <select value={role} onChange={(e) => setRoleAndReset(e.target.value as Role | '')} className={controlClass} aria-label="Filter by role">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <label className="relative block sm:flex-1">
+          <span className="sr-only">Search users</span>
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[#5f6368] dark:text-[#9aa0a6]" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => changeSearch(e.target.value)}
+            placeholder="Search by name, email, ID or department"
+            className="h-12 w-full rounded-full bg-[#e9eef6] pr-4 pl-11 text-[15px] outline-none placeholder:text-[#5f6368] focus:bg-white focus:shadow-[0_1px_3px_rgba(60,64,67,.3)] dark:bg-[#303134] dark:placeholder:text-[#9aa0a6] dark:focus:bg-[#303134]"
+          />
+        </label>
+        <div className="flex gap-3">
+          <select value={role} onChange={(e) => changeRole(e.target.value as Role | '')} className={`${ui.select} flex-1`} aria-label="Filter by role">
             <option value="">All roles</option>
             {ROLES.map((r) => (
               <option key={r} value={r}>
@@ -178,88 +185,65 @@ function UserManagement({ me }: { me: User }) {
               </option>
             ))}
           </select>
-          <select value={status} onChange={(e) => setStatusAndReset(e.target.value as typeof status)} className={controlClass} aria-label="Filter by status">
+          <select value={status} onChange={(e) => changeStatus(e.target.value as typeof status)} className={`${ui.select} flex-1`} aria-label="Filter by status">
             <option value="all">Any status</option>
             <option value="active">Active</option>
             <option value="inactive">Deactivated</option>
           </select>
-          <select value={sort} onChange={(e) => setSortAndReset(e.target.value as SortKey)} className={controlClass} aria-label="Sort by">
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                Sort: {o.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => {
-              setOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
-              setPage(1);
-            }}
-            className={buttonStyles.secondary}
-            aria-label={order === 'asc' ? 'Ascending order' : 'Descending order'}
-            title={order === 'asc' ? 'Ascending' : 'Descending'}
-          >
-            {order === 'asc' ? '↑ Asc' : '↓ Desc'}
-          </button>
         </div>
       </div>
 
-      {notice && (
-        <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
-          {notice}
-        </p>
-      )}
       {error && (
-        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p role="alert" className="mb-4 rounded-lg bg-[#fce8e6] px-4 py-3 text-sm text-[#8c1d18] dark:bg-[#601410] dark:text-[#f9dedc]">
           {error}
         </p>
       )}
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div className={`overflow-hidden ${ui.card}`}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
-              <tr>
-                <th className="px-4 py-3 font-medium">User</th>
-                <th className="px-4 py-3 font-medium">Role</th>
-                <th className="px-4 py-3 font-medium">Registered</th>
-                <th className="px-4 py-3 font-medium">Last login</th>
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className={ui.muted}>
+              <tr className={`border-b ${ui.border}`}>
+                <SortHeader label="Name" sortKey="name" sort={sort} order={order} onSort={sortBy} />
+                <SortHeader label="Role" sortKey="role" sort={sort} order={order} onSort={sortBy} />
+                <SortHeader label="Registered" sortKey="createdAt" sort={sort} order={order} onSort={sortBy} />
+                <SortHeader label="Last sign-in" sortKey="lastLoginAt" sort={sort} order={order} onSort={sortBy} />
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">
+                <th className="px-4 py-3">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
-            <tbody className={`divide-y divide-zinc-100 dark:divide-zinc-800 ${loading ? 'opacity-60' : ''}`}>
+            <tbody className={loading ? 'opacity-60' : ''}>
               {data?.users.map((u) => {
                 const isMe = u.userId === me.userId;
                 const busy = busyId === u.userId;
                 return (
-                  <tr key={u.userId} className={u.active ? '' : 'bg-zinc-50/60 dark:bg-zinc-950/40'}>
+                  <tr key={u.userId} className={`border-b last:border-b-0 ${ui.border} hover:bg-[#f8f9fa] dark:hover:bg-[#28292a]`}>
                     <td className="px-4 py-3">
-                      <Link href={`/users/${u.userId}`} className="group flex items-center gap-3">
+                      <Link href={`/users/${u.userId}`} className={`flex items-center gap-3 rounded ${ui.focus}`}>
                         <Avatar user={u} size="md" />
                         <span className="min-w-0">
-                          <span className="block truncate font-medium text-zinc-900 group-hover:underline dark:text-zinc-50">
-                            {fullName(u)} {isMe && <span className="text-xs font-normal text-zinc-500">(you)</span>}
+                          <span className="block truncate text-[15px] hover:underline">
+                            {fullName(u)}
+                            {isMe && <span className={`ml-1 text-sm ${ui.muted}`}>(you)</span>}
                           </span>
-                          <span className="block truncate text-xs text-zinc-500">
-                            {u.email}
-                            {u.studentId && <> · {u.studentId}</>}
-                          </span>
-                          {u.department && <span className="block truncate text-xs text-zinc-400">{u.department}</span>}
+                          <span className={`block truncate text-xs ${ui.muted}`}>{u.email}</span>
+                          {(u.studentId || u.department) && (
+                            <span className={`block truncate text-xs ${ui.muted}`}>
+                              {[u.studentId, u.department].filter(Boolean).join(', ')}
+                            </span>
+                          )}
                         </span>
                       </Link>
                     </td>
                     <td className="px-4 py-3">
                       <select
                         value={u.role}
-                        onChange={(e) => changeRole(u, e.target.value as Role)}
+                        onChange={(e) => updateRole(u, e.target.value as Role)}
                         disabled={isMe || busy}
                         title={isMe ? "You can't change your own role" : undefined}
-                        className={`${controlClass} py-1.5 disabled:cursor-not-allowed disabled:opacity-60`}
+                        className={`${ui.select} h-9`}
                         aria-label={`Role for ${fullName(u)}`}
                       >
                         {ROLES.map((r) => (
@@ -269,9 +253,9 @@ function UserManagement({ me }: { me: User }) {
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{formatDate(u.createdAt)}</td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{formatDate(u.lastLoginAt, true)}</td>
-                    <td className="px-4 py-3">
+                    <td className={`px-4 py-3 whitespace-nowrap ${ui.muted}`}>{formatDate(u.createdAt)}</td>
+                    <td className={`px-4 py-3 whitespace-nowrap ${ui.muted}`}>{formatDate(u.lastLoginAt, true)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <StatusBadge active={u.active} />
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -280,7 +264,7 @@ function UserManagement({ me }: { me: User }) {
                           type="button"
                           onClick={() => toggleActive(u)}
                           disabled={busy}
-                          className={`${u.active ? buttonStyles.danger : buttonStyles.secondary} px-3 py-1.5 text-xs`}
+                          className={u.active ? ui.btnDanger : `${ui.btnText} h-9`}
                         >
                           {u.active ? 'Deactivate' : 'Reactivate'}
                         </button>
@@ -291,14 +275,14 @@ function UserManagement({ me }: { me: User }) {
               })}
               {data && data.users.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-sm text-zinc-500">
-                    No users match these filters.
+                  <td colSpan={6} className={`px-4 py-16 text-center ${ui.muted}`}>
+                    No users match your search. Try a different name or clear the filters.
                   </td>
                 </tr>
               )}
               {!data && loading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-sm text-zinc-500">
+                  <td colSpan={6} className={`px-4 py-16 text-center ${ui.muted}`}>
                     Loading users…
                   </td>
                 </tr>
@@ -308,31 +292,78 @@ function UserManagement({ me }: { me: User }) {
         </div>
 
         {data && data.total > 0 && (
-          <div className="flex items-center justify-between border-t border-zinc-200 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
-            <span>
-              {data.total} user{data.total === 1 ? '' : 's'} · page {data.page} of {data.totalPages}
+          <div className={`flex items-center justify-end gap-2 border-t px-4 py-2 text-sm ${ui.border} ${ui.muted}`}>
+            <span className="mr-2">
+              {first}–{last} of {data.total}
             </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className={`${buttonStyles.secondary} px-3 py-1.5`}
-                disabled={page <= 1 || loading}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                className={`${buttonStyles.secondary} px-3 py-1.5`}
-                disabled={page >= data.totalPages || loading}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </button>
-            </div>
+            <button
+              type="button"
+              aria-label="Previous page"
+              className={`rounded-full p-2 disabled:opacity-40 ${ui.hover} ${ui.focus}`}
+              disabled={page <= 1 || loading}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              <ChevronLeftIcon />
+            </button>
+            <button
+              type="button"
+              aria-label="Next page"
+              className={`rounded-full p-2 disabled:opacity-40 ${ui.hover} ${ui.focus}`}
+              disabled={page >= data.totalPages || loading}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              <ChevronRightIcon />
+            </button>
           </div>
         )}
       </div>
+
+      {/* Snackbar */}
+      {notice && (
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 z-30 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded bg-[#313131] py-3.5 pr-2 pl-4 text-sm text-[#f2f2f2] shadow-lg sm:left-6 sm:translate-x-0 dark:bg-[#e3e3e3] dark:text-[#313131]"
+        >
+          <span>{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice('')}
+            className="rounded px-3 py-1.5 font-medium text-[#a8c7fa] hover:bg-white/10 dark:text-[#1558b0] dark:hover:bg-black/5"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
     </div>
+  );
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  order,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: SortKey;
+  order: 'asc' | 'desc';
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sort === sortKey;
+  return (
+    <th className="px-4 py-3 font-medium" aria-sort={active ? (order === 'asc' ? 'ascending' : 'descending') : undefined}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex items-center gap-1 rounded ${ui.focus} ${active ? 'text-[#1f1f1f] dark:text-[#e3e3e3]' : 'hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3]'}`}
+      >
+        {label}
+        <span aria-hidden className={active ? '' : 'invisible'}>
+          {order === 'asc' ? '↑' : '↓'}
+        </span>
+      </button>
+    </th>
   );
 }
