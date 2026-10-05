@@ -43,9 +43,12 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
-  const status = err.status || 500;
+  const status = err.status || err.statusCode || 500;
+  // 4xx messages are meant for the user (e.g. "First name is required"), so always send them.
+  // Only hide unexpected 5xx details in production.
+  const hideDetails = status >= 500 && process.env.NODE_ENV === 'production';
   res.status(status).json({
-    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+    error: hideDetails ? 'Internal server error' : err.message,
   });
 });
 

@@ -1,33 +1,48 @@
-// app/profile/page.tsx
+// app/profile/page.tsx — my profile
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useRequireAuth } from '@/hooks/useRequireAuth';
+import Link from 'next/link';
+import { AppShell } from '@/components/AppShell';
+import { buttonStyles, ProfileCard } from '@/components/ProfileCard';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function ProfilePage() {
-  const router = useRouter();
+  return (
+    <AppShell>
+      <MyProfile />
+    </AppShell>
+  );
+}
 
-  // Checking if user is login or have cookie token
-  const { user, loading, error } = useRequireAuth();
-
-  async function handleLogout() {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    router.push('/login');
-  }
-
-  if (loading) return <p style={{ padding: 32 }}>Loading...</p>;
-  if (error) return <p style={{ padding: 32, color: 'red' }}>{error}</p>;
-  if (!user) return null; // already redirecting to /login
+function MyProfile() {
+  const { user } = useCurrentUser();
+  if (!user) return null;
 
   return (
-    <div style={{ padding: 32, fontFamily: 'monospace' }}>
-      <h1>My Profile</h1>
-      <p><strong>User ID:</strong> {user.userId}</p>
-      <p><strong>Role:</strong> {user.role}</p>
-      <button type="button" onClick={handleLogout}>Log out</button>
+    <div className="space-y-6">
+      <ProfileCard
+        user={user}
+        actions={
+          <>
+            <Link href="/profile/edit" className={buttonStyles.secondary}>
+              Edit profile
+            </Link>
+            {user.role === 'lab_manager' && (
+              <Link href="/users" className={buttonStyles.primary}>
+                Manage users
+              </Link>
+            )}
+          </>
+        }
+      />
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">About your account</h2>
+        <ul className="mt-3 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <li>You sign in with your Google account ({user.email}). Your email can only be changed in Google.</li>
+          <li>Your role decides what you can do in the lab system. Only the Lab Manager can change roles.</li>
+        </ul>
+      </section>
     </div>
   );
 }
