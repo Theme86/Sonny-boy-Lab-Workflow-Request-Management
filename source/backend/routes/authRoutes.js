@@ -30,19 +30,19 @@ router.post('/google', async (req, res) => {
 
   const { sub: googleId, email, given_name, family_name, picture } = payload;
 
-  let user = await prisma.users.findUnique({ where: { googleId } });
+  let user = await prisma.user.findUnique({ where: { googleId } });
   let isNewUser = false;
 
   if (!user) {
-    user = await prisma.users.findUnique({ where: { email } });
+    user = await prisma.user.findUnique({ where: { email } });
     if (user) {
-      user = await prisma.users.update({
+      user = await prisma.user.update({
         where: { email },
         data: { googleId, lastLoginAt: new Date() },
       });
     } else {
       isNewUser = true;
-      user = await prisma.users.create({
+      user = await prisma.user.create({
         data: {
           googleId,
           email,
@@ -54,7 +54,7 @@ router.post('/google', async (req, res) => {
       });
     }
   } else {
-    user = await prisma.users.update({
+    user = await prisma.user.update({
       where: { googleId },
       data: { lastLoginAt: new Date() },
     });
@@ -64,7 +64,7 @@ router.post('/google', async (req, res) => {
   if (isNewUser || !user.avatarUrl) {
     const localAvatarPath = await downloadAvatar(picture, user.userId);
     if (localAvatarPath) {
-      user = await prisma.users.update({
+      user = await prisma.user.update({
         where: { userId: user.userId },
         data: { avatarUrl: localAvatarPath },
       });
@@ -74,7 +74,7 @@ router.post('/google', async (req, res) => {
   if (isNewUser || !user.bannerUrl) {
     const bannerPath = assignDefaultBanner(user.userId);
     if (bannerPath) {
-      user = await prisma.users.update({
+      user = await prisma.user.update({
         where: { userId: user.userId },
         data: { bannerUrl: bannerPath },
       });
@@ -111,7 +111,7 @@ router.post('/google', async (req, res) => {
 
 
 router.get('/me', requireAuth, async (req, res) => {
-  const user = await prisma.users.findUnique({
+  const user = await prisma.user.findUnique({
     where: { userId: req.user.userId },
     select: { userId: true, firstName: true, lastName: true, email: true, role: true, avatarUrl: true },
   });
