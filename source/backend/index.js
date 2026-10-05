@@ -11,6 +11,7 @@ const { prisma } = require('./lib/prisma');
 // Import Routes
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
+const requestRoutes = require('./routes/requestRoutes');
 
 
 const app = express();
@@ -28,6 +29,7 @@ app.use(cookieParser());
 // Mount User API Routes
 app.use('/api/users', userRoutes);
 app.use('/auth', authRoutes);
+app.use('/api/requests', requestRoutes);
 app.use('/userImages', express.static(path.join(__dirname, 'public', 'userImages')));
 
 

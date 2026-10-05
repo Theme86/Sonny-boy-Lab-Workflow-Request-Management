@@ -11,7 +11,8 @@
   },
   "scripts": {
     "start": "node -r tsx/cjs index.js",
-    "dev": "nodemon --exec \"node -r tsx/cjs\" index.js"
+    "dev": "nodemon --exec \"node -r tsx/cjs\" index.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.10.0",
@@ -39,3 +40,4 @@
     "deepmerge-ts": "8.0.2"
   }
 }
+
