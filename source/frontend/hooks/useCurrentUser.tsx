@@ -23,10 +23,11 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Used by the "Try again" button. (The first load below does its own fetch so that
+  // state is only set inside promise callbacks, not synchronously inside the effect.)
   const reload = useCallback(async () => {
     try {
-      const me = await apiFetch<User>('/api/users/me');
-      setUser(me);
+      setUser(await apiFetch<User>('/api/users/me'));
       setError('');
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -40,8 +41,28 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    reload();
-  }, [reload]);
+    let cancelled = false;
+    apiFetch<User>('/api/users/me')
+      .then((me) => {
+        if (cancelled) return;
+        setUser(me);
+        setError('');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          router.replace('/login');
+          return;
+        }
+        setError(err instanceof Error ? err.message : 'Something went wrong');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   return (
     <CurrentUserContext.Provider value={{ user, loading, error, setUser, reload }}>
