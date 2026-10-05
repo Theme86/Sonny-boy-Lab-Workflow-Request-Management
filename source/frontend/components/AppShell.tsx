@@ -24,7 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex w-full flex-1">
           <SideNav />
           <main className="min-w-0 flex-1 px-4 pt-5 pb-16 sm:px-6 lg:pr-8 lg:pl-2">
-            <div className="mx-auto w-full max-w-[1400px]">
+            <div className="mx-auto w-full max-w-[1680px]">
               <ShellContent>{children}</ShellContent>
             </div>
           </main>

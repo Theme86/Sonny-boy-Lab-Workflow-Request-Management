@@ -114,7 +114,7 @@ export function ProfileDetails({ user, editable }: { user: User; editable: boole
   const showPrivate = user.studentId !== undefined || user.phone !== undefined;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="grid items-start gap-6 xl:grid-cols-2">
       <InfoSection
         className="xl:col-span-2"
         title="Basic info"
