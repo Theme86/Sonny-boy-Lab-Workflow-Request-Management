@@ -24,17 +24,32 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+const SETUP_PATH = '/profile/setup';
+
+function Spinner() {
+  return (
+    <div className="flex justify-center py-24" role="status">
+      <span className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-emerald-600" />
+      <span className="sr-only">Loading…</span>
+    </div>
+  );
+}
+
 function ShellContent({ children }: { children: ReactNode }) {
   const { user, loading, error, reload } = useCurrentUser();
+  const pathname = usePathname();
+  const router = useRouter();
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-24" role="status">
-        <span className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-emerald-600" />
-        <span className="sr-only">Loading…</span>
-      </div>
-    );
-  }
+  // New users must finish "Create profile" first; finished users can't reopen it.
+  const needsSetup = !!user && !user.profileCompletedAt;
+  const onSetupPage = pathname === SETUP_PATH;
+  const redirectTo = needsSetup && !onSetupPage ? SETUP_PATH : !needsSetup && onSetupPage && user ? '/profile' : null;
+
+  useEffect(() => {
+    if (redirectTo) router.replace(redirectTo);
+  }, [redirectTo, router]);
+
+  if (loading || redirectTo) return <Spinner />;
   if (error) {
     return (
       <div className="mx-auto max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-900 dark:bg-red-950">
@@ -57,10 +72,13 @@ function TopBar() {
   const { user } = useCurrentUser();
   const pathname = usePathname();
 
-  const links = [
-    { href: '/profile', label: 'My profile' },
-    ...(user?.role === 'lab_manager' ? [{ href: '/users', label: 'Users' }] : []),
-  ];
+  // hide navigation until the profile has been created
+  const links = !user?.profileCompletedAt
+    ? []
+    : [
+        { href: '/profile', label: 'My profile' },
+        ...(user.role === 'lab_manager' ? [{ href: '/users', label: 'Users' }] : []),
+      ];
 
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/90">

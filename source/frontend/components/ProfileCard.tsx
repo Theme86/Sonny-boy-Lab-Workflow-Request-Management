@@ -35,10 +35,28 @@ export function ProfileCard({ user, actions }: Props) {
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{fullName(user)}</h1>
             <RoleBadge role={user.role} />
           </div>
-          <p className="mt-1 text-sm text-zinc-500">{user.email}</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            {user.email}
+            {user.department && <> · {user.department}</>}
+          </p>
+          {user.bio && <p className="mt-4 max-w-2xl whitespace-pre-line text-sm text-zinc-700 dark:text-zinc-300">{user.bio}</p>}
         </div>
 
         <dl className="mt-6 grid grid-cols-1 gap-4 border-t border-zinc-100 pt-6 sm:grid-cols-3 dark:border-zinc-800">
+          <Detail label="Faculty / department">{user.department || <NotSet />}</Detail>
+          {/* undefined = hidden from this viewer (only the user and the Lab Manager see these) */}
+          {user.studentId !== undefined && <Detail label="Student / staff ID">{user.studentId || <NotSet />}</Detail>}
+          {user.phone !== undefined && (
+            <Detail label="Phone">
+              {user.phone ? (
+                <a href={`tel:${user.phone.replace(/[\s-]/g, '')}`} className="hover:underline">
+                  {user.phone}
+                </a>
+              ) : (
+                <NotSet />
+              )}
+            </Detail>
+          )}
           <Detail label="Member since">{formatDate(user.createdAt)}</Detail>
           <Detail label="Last login">{formatDate(user.lastLoginAt, true)}</Detail>
           <Detail label="Account status">
@@ -48,6 +66,10 @@ export function ProfileCard({ user, actions }: Props) {
       </div>
     </section>
   );
+}
+
+function NotSet() {
+  return <span className="text-zinc-400 dark:text-zinc-500">Not set</span>;
 }
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {

@@ -10,6 +10,8 @@ const ROLES = ['member', 'ta', 'lecturer', 'lab_manager'];
 const NAME_MAX = 100;
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const BANNER_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const DEPARTMENT_MAX = 150;
+const BIO_MAX = 300;
 
 // Fields any logged-in user may see about another user.
 // googleId is intentionally excluded — no reason to expose it to clients.
@@ -24,7 +26,18 @@ const PUBLIC_FIELDS = {
   createdAt: true,
   lastLoginAt: true,
   active: true,
+  department: true,
+  bio: true,
+  profileCompletedAt: true,
 };
+
+// Contact/ID details: only the user themself and the Lab Manager can see these.
+const PRIVATE_FIELDS = {
+  studentId: true,
+  phone: true,
+};
+
+const ALL_FIELDS = { ...PUBLIC_FIELDS, ...PRIVATE_FIELDS };
 
 // Every route below needs a logged-in, active user with an up-to-date role.
 router.use(requireAuth, requireActiveUser);
@@ -39,6 +52,17 @@ function parseUserId(value) {
   const id = Number(value);
   if (!Number.isInteger(id) || id <= 0) throw httpError(400, 'Invalid user id');
   return id;
+}
+
+// Optional text field: "" or null clears it, otherwise trimmed and length-checked.
+function cleanOptional(value, label, max, pattern, patternMessage) {
+  if (value === null) return null;
+  if (typeof value !== 'string') throw httpError(400, `${label} must be text`);
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.length > max) throw httpError(400, `${label} must be at most ${max} characters`);
+  if (pattern && !pattern.test(trimmed)) throw httpError(400, patternMessage);
+  return trimmed;
 }
 
 function cleanName(value, label) {
@@ -68,28 +92,46 @@ function requireImageBody(req) {
 router.get('/me', async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { userId: req.user.userId },
-    select: PUBLIC_FIELDS,
+    select: ALL_FIELDS,
   });
   if (!user) throw httpError(404, 'User not found');
   res.json(user);
 });
 
-// PATCH /api/users/me — edit my name
-// body: { firstName?, lastName? }
+// PATCH /api/users/me — create/edit my profile
+// body: { firstName?, lastName?, studentId?, phone?, department?, bio?, markProfileComplete? }
+// Send "" or null to clear an optional field.
+// markProfileComplete: true is sent by the "create profile" page; it records when setup finished.
 router.patch('/me', async (req, res) => {
   const body = req.body ?? {};
   const data = {};
   if (body.firstName !== undefined) data.firstName = cleanName(body.firstName, 'First name');
   if (body.lastName !== undefined) data.lastName = cleanName(body.lastName, 'Last name');
+  if (body.studentId !== undefined) {
+    data.studentId = cleanOptional(body.studentId, 'Student / staff ID', 20, /^[A-Za-z0-9-]+$/, 'Student / staff ID can only contain letters, numbers and "-"');
+  }
+  if (body.phone !== undefined) {
+    data.phone = cleanOptional(body.phone, 'Phone number', 20, /^\+?[0-9][0-9\s-]{5,}$/, 'Phone number can only contain digits, spaces, "-" and a leading "+"');
+  }
+  if (body.department !== undefined) data.department = cleanOptional(body.department, 'Department', DEPARTMENT_MAX);
+  if (body.bio !== undefined) data.bio = cleanOptional(body.bio, 'Bio', BIO_MAX);
 
-  if (Object.keys(data).length === 0) {
-    throw httpError(400, 'Nothing to update. Send firstName and/or lastName');
+  if (body.markProfileComplete === true) {
+    const current = await prisma.user.findUnique({
+      where: { userId: req.user.userId },
+      select: { profileCompletedAt: true },
+    });
+    if (!current?.profileCompletedAt) data.profileCompletedAt = new Date();
+  }
+
+  if (Object.keys(data).length === 0 && body.markProfileComplete !== true) {
+    throw httpError(400, 'Nothing to update');
   }
 
   const user = await prisma.user.update({
     where: { userId: req.user.userId },
     data,
-    select: PUBLIC_FIELDS,
+    select: ALL_FIELDS,
   });
   res.json(user);
 });
@@ -101,7 +143,7 @@ router.put('/me/avatar', rawImage(AVATAR_MAX_BYTES), async (req, res) => {
   const user = await prisma.user.update({
     where: { userId: req.user.userId },
     data: { avatarUrl },
-    select: PUBLIC_FIELDS,
+    select: ALL_FIELDS,
   });
   res.json(user);
 });
@@ -113,7 +155,7 @@ router.put('/me/banner', rawImage(BANNER_MAX_BYTES), async (req, res) => {
   const user = await prisma.user.update({
     where: { userId: req.user.userId },
     data: { bannerUrl },
-    select: PUBLIC_FIELDS,
+    select: ALL_FIELDS,
   });
   res.json(user);
 });
@@ -125,7 +167,7 @@ router.delete('/me/banner', async (req, res) => {
   const user = await prisma.user.update({
     where: { userId: req.user.userId },
     data: { bannerUrl: `${path}?v=${Date.now()}` },
-    select: PUBLIC_FIELDS,
+    select: ALL_FIELDS,
   });
   res.json(user);
 });
@@ -163,6 +205,8 @@ router.get('/', requireRole('lab_manager'), async (req, res) => {
       { firstName: { contains: q } },
       { lastName: { contains: q } },
       { email: { contains: q } },
+      { studentId: { contains: q } },
+      { department: { contains: q } },
     ];
   }
 
@@ -177,7 +221,7 @@ router.get('/', requireRole('lab_manager'), async (req, res) => {
       orderBy,
       skip: (page - 1) * pageSize,
       take: pageSize,
-      select: PUBLIC_FIELDS,
+      select: ALL_FIELDS,
     }),
   ]);
 
@@ -196,7 +240,7 @@ router.patch('/:id/role', requireRole('lab_manager'), async (req, res) => {
   const exists = await prisma.user.findUnique({ where: { userId }, select: { userId: true } });
   if (!exists) throw httpError(404, 'User not found');
 
-  const user = await prisma.user.update({ where: { userId }, data: { role }, select: PUBLIC_FIELDS });
+  const user = await prisma.user.update({ where: { userId }, data: { role }, select: ALL_FIELDS });
   res.json(user);
 });
 
@@ -211,7 +255,7 @@ router.patch('/:id/active', requireRole('lab_manager'), async (req, res) => {
   const exists = await prisma.user.findUnique({ where: { userId }, select: { userId: true } });
   if (!exists) throw httpError(404, 'User not found');
 
-  const user = await prisma.user.update({ where: { userId }, data: { active }, select: PUBLIC_FIELDS });
+  const user = await prisma.user.update({ where: { userId }, data: { active }, select: ALL_FIELDS });
   res.json(user);
 });
 
@@ -222,7 +266,11 @@ router.patch('/:id/active', requireRole('lab_manager'), async (req, res) => {
 // GET /api/users/:id
 router.get('/:id', async (req, res) => {
   const userId = parseUserId(req.params.id);
-  const user = await prisma.user.findUnique({ where: { userId }, select: PUBLIC_FIELDS });
+  const canSeePrivate = userId === req.user.userId || req.user.role === 'lab_manager';
+  const user = await prisma.user.findUnique({
+    where: { userId },
+    select: canSeePrivate ? ALL_FIELDS : PUBLIC_FIELDS,
+  });
   if (!user) throw httpError(404, 'User not found');
   res.json(user);
 });

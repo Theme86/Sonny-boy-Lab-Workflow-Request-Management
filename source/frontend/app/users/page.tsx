@@ -165,7 +165,7 @@ function UserManagement({ me }: { me: User }) {
           type="search"
           value={search}
           onChange={(e) => setSearchAndReset(e.target.value)}
-          placeholder="Search name or email…"
+          placeholder="Search name, email, ID or department…"
           className={`${controlClass} lg:flex-1`}
           aria-label="Search users"
         />
@@ -245,7 +245,11 @@ function UserManagement({ me }: { me: User }) {
                           <span className="block truncate font-medium text-zinc-900 group-hover:underline dark:text-zinc-50">
                             {fullName(u)} {isMe && <span className="text-xs font-normal text-zinc-500">(you)</span>}
                           </span>
-                          <span className="block truncate text-xs text-zinc-500">{u.email}</span>
+                          <span className="block truncate text-xs text-zinc-500">
+                            {u.email}
+                            {u.studentId && <> · {u.studentId}</>}
+                          </span>
+                          {u.department && <span className="block truncate text-xs text-zinc-400">{u.department}</span>}
                         </span>
                       </Link>
                     </td>
