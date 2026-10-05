@@ -21,10 +21,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     <CurrentUserProvider>
       <div className={`flex min-h-screen flex-1 flex-col ${ui.page} ${fontVariables}`} style={fontStyle}>
         <TopBar />
-        <div className="mx-auto flex w-full max-w-[1200px] flex-1">
+        <div className="flex w-full flex-1">
           <SideNav />
-          <main className="min-w-0 flex-1 px-4 pt-6 pb-16 sm:px-8 lg:pt-10">
-            <ShellContent>{children}</ShellContent>
+          <main className="min-w-0 flex-1 px-4 pt-5 pb-16 sm:px-6 lg:pr-8 lg:pl-2">
+            <div className="mx-auto w-full max-w-[1400px]">
+              <ShellContent>{children}</ShellContent>
+            </div>
           </main>
         </div>
       </div>
@@ -90,7 +92,7 @@ function SideNav() {
   if (items.length === 0) return null;
 
   return (
-    <nav aria-label="Main" className="hidden w-64 shrink-0 pt-4 pr-4 lg:block">
+    <nav aria-label="Main" className="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 px-3 pt-3 lg:block">
       <ul className="space-y-0.5">
         {items.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
@@ -99,7 +101,7 @@ function SideNav() {
               <Link
                 href={href}
                 aria-current={active ? 'page' : undefined}
-                className={`flex h-12 items-center gap-5 rounded-r-full pl-6 text-sm font-medium ${ui.focus} ${
+                className={`flex h-11 items-center gap-4 rounded-full px-4 text-sm font-medium ${ui.focus} ${
                   active
                     ? 'bg-[#d3e3fd] text-[#041e49] dark:bg-[#004a77] dark:text-[#c2e7ff]'
                     : `${ui.hover} text-[#1f1f1f] dark:text-[#e3e3e3]`
@@ -122,8 +124,8 @@ function TopBar() {
   const pathname = usePathname();
 
   return (
-    <header className={`sticky top-0 z-20 border-b bg-white dark:bg-[#1f1f1f] ${ui.border}`}>
-      <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
+    <header className={`sticky top-0 z-20 border-b lg:border-b-0 ${ui.surface} ${ui.border}`}>
+      <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:pr-8">
         <Link href="/profile" className={`flex items-center gap-2 rounded ${ui.focus}`}>
           <VaseMark width={26} height={26} className="text-[#1558b0] dark:text-[#a8c7fa]" />
           <span className="text-[22px] leading-none text-[#444746] dark:text-[#e3e3e3]">Vase Lab</span>
@@ -133,7 +135,7 @@ function TopBar() {
 
       {/* small screens: navigation as tabs */}
       {items.length > 1 && (
-        <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-2 lg:hidden">
+        <nav aria-label="Main" className="flex gap-1 px-2 lg:hidden">
           {items.map(({ href, label }) => {
             const active = isActive(pathname, href);
             return (

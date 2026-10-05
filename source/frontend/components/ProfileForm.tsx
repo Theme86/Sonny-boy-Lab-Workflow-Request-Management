@@ -260,32 +260,35 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
     </p>
   );
 
-  // ---------- Create profile: one centred card, like an account sign-up step ----------
+  // ---------- Create profile: intro + photo on the left, form on the right ----------
   if (isSetup) {
     return (
-      <form onSubmit={onSubmit} noValidate className={`mx-auto max-w-[520px] px-6 py-9 sm:px-10 sm:py-12 ${ui.card}`}>
-        <VaseMark width={32} height={32} className="text-[#1558b0] dark:text-[#a8c7fa]" />
-        <h1 className="mt-5 text-[28px] leading-9">Create your profile</h1>
-        <p className={`mt-2 text-base ${ui.muted}`}>
-          Tell the lab team who you are. Only your name is required; you can change everything later.
-        </p>
-        <p className={`mt-4 inline-flex rounded-full border px-3 py-1 text-sm ${ui.border}`}>
-          {user.email} ({ROLE_LABELS[user.role]})
-        </p>
-
-        <div className="mt-8 space-y-6">
-          {photoPicker}
-          {nameFields}
-          {labFields}
-          {bioField}
-          <p className={`text-xs ${ui.muted}`}>Your student / staff ID and phone number are only visible to you and the Lab Manager.</p>
-          {errorBanner}
+      <form onSubmit={onSubmit} noValidate className={`mx-auto grid max-w-[1000px] overflow-hidden md:grid-cols-[340px_minmax(0,1fr)] ${ui.card}`}>
+        <div className="bg-[#e9eef6] px-6 py-8 sm:px-8 sm:py-10 dark:bg-[#282a2c]">
+          <VaseMark width={32} height={32} className="text-[#1558b0] dark:text-[#a8c7fa]" />
+          <h1 className="mt-5 text-[28px] leading-9">Create your profile</h1>
+          <p className={`mt-2 text-base ${ui.muted}`}>
+            Tell the lab team who you are. Only your name is required; you can change everything later.
+          </p>
+          <p className="mt-5 inline-flex max-w-full rounded-full bg-white/70 px-3 py-1 text-sm break-all dark:bg-white/10">
+            {user.email} ({ROLE_LABELS[user.role]})
+          </p>
+          <div className="mt-8">{photoPicker}</div>
         </div>
 
-        <div className="mt-8 flex justify-end">
-          <button type="submit" className={ui.btnPrimary} disabled={saving}>
-            {saving ? 'Creating…' : 'Create profile'}
-          </button>
+        <div className="flex flex-col px-6 py-8 sm:px-10 sm:py-10">
+          <div className="space-y-6">
+            {nameFields}
+            {labFields}
+            {bioField}
+            <p className={`text-xs ${ui.muted}`}>Your student / staff ID and phone number are only visible to you and the Lab Manager.</p>
+            {errorBanner}
+          </div>
+          <div className="mt-8 flex justify-end">
+            <button type="submit" className={ui.btnPrimary} disabled={saving}>
+              {saving ? 'Creating…' : 'Create profile'}
+            </button>
+          </div>
         </div>
       </form>
     );
@@ -293,87 +296,91 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
 
   // ---------- Edit profile ----------
   return (
-    <form onSubmit={onSubmit} noValidate className="mx-auto max-w-3xl">
+    <form onSubmit={onSubmit} noValidate>
       <div className="mb-6 flex items-center gap-2">
         <Link href="/profile" aria-label="Back to personal info" className={`rounded-full p-2 ${ui.hover} ${ui.focus}`}>
           <ArrowBackIcon />
         </Link>
-        <h1 className="text-[22px] leading-7">Edit profile</h1>
+        <h1 className="text-[28px] leading-9">Edit profile</h1>
       </div>
 
-      <Section title="Profile picture and banner">
-        {photoPicker}
-        <div className="mt-6">
-          <div
-            className="h-24 rounded-lg bg-[#e8eaed] bg-cover bg-center sm:h-28 dark:bg-[#303134]"
-            style={bannerShown ? { backgroundImage: `url("${bannerShown}")` } : undefined}
-            role="img"
-            aria-label="Banner preview"
-          />
-          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <button type="button" className={ui.btnText} onClick={() => bannerInput.current?.click()}>
-              Change banner
-            </button>
-            {bannerFile ? (
-              <button
-                type="button"
-                className={ui.btnText}
-                onClick={() => {
-                  setBannerFile(null);
-                  setBannerPreview(null);
-                }}
-              >
-                Keep current banner
+      <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]">
+        <Section title="Profile picture and banner" className="lg:sticky lg:top-20">
+          {photoPicker}
+          <div className="mt-6">
+            <div
+              className="h-24 rounded-xl bg-gradient-to-br from-[#c2d7fb] to-[#e8f0fe] bg-cover bg-center sm:h-28 dark:from-[#1d3a6b] dark:to-[#2a2f3a]"
+              style={bannerShown ? { backgroundImage: `url("${bannerShown}")` } : undefined}
+              role="img"
+              aria-label="Banner preview"
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <button type="button" className={ui.btnText} onClick={() => bannerInput.current?.click()}>
+                Change banner
               </button>
-            ) : (
-              !resetBanner && (
+              {bannerFile ? (
                 <button
                   type="button"
                   className={ui.btnText}
                   onClick={() => {
-                    setResetBanner(true);
-                    setSaved(false);
+                    setBannerFile(null);
+                    setBannerPreview(null);
                   }}
                 >
-                  Use default banner
+                  Keep current banner
                 </button>
-              )
-            )}
-            <span className={`text-xs ${ui.muted}`}>
+              ) : (
+                !resetBanner && (
+                  <button
+                    type="button"
+                    className={ui.btnText}
+                    onClick={() => {
+                      setResetBanner(true);
+                      setSaved(false);
+                    }}
+                  >
+                    Use default banner
+                  </button>
+                )
+              )}
+            </div>
+            <p className={`mt-1 text-xs ${ui.muted}`}>
               {resetBanner ? 'The default banner will be used when you save.' : `Wide image, up to ${BANNER_MAX_MB} MB`}
-            </span>
+            </p>
+            {errors.banner && <p className={`mt-1 text-xs ${ui.errorText}`}>{errors.banner}</p>}
+            <input
+              ref={bannerInput}
+              type="file"
+              accept={ACCEPTED_TYPES.join(',')}
+              className="hidden"
+              onChange={(e) => {
+                pickBanner(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
           </div>
-          {errors.banner && <p className={`mt-1 text-xs ${ui.errorText}`}>{errors.banner}</p>}
-          <input
-            ref={bannerInput}
-            type="file"
-            accept={ACCEPTED_TYPES.join(',')}
-            className="hidden"
-            onChange={(e) => {
-              pickBanner(e.target.files?.[0]);
-              e.target.value = '';
-            }}
-          />
+        </Section>
+
+        <div className="space-y-6">
+          <Section title="Basic info" description="Other people in the lab can see this information.">
+            <div className="space-y-5">
+              {nameFields}
+              <Field label="Email" hint="Managed by your Google account.">
+                <input value={user.email} disabled className={ui.input} />
+              </Field>
+              {bioField}
+            </div>
+          </Section>
+
+          <Section title="Contact info and ID" description="Only you and the Lab Manager can see your student / staff ID and phone number.">
+            {labFields}
+          </Section>
+
+          {errorBanner}
         </div>
-      </Section>
+      </div>
 
-      <Section title="Basic info" description="Other people in the lab can see this information.">
-        <div className="space-y-5">
-          {nameFields}
-          <Field label="Email" hint="Managed by your Google account.">
-            <input value={user.email} disabled className={ui.input} />
-          </Field>
-          {bioField}
-        </div>
-      </Section>
-
-      <Section title="Contact info and ID" description="Only you and the Lab Manager can see your student / staff ID and phone number.">
-        {labFields}
-      </Section>
-
-      <div className="mt-6">{errorBanner}</div>
-
-      <div className={`sticky bottom-0 mt-6 flex items-center justify-end gap-2 border-t bg-white py-4 dark:bg-[#1f1f1f] ${ui.border}`}>
+      <div className={`sticky bottom-4 z-10 mt-6 flex items-center justify-end gap-2 px-5 py-3 ${ui.card}`}>
         {saved && !hasChanges && (
           <span role="status" className={`mr-auto text-sm ${ui.muted}`}>
             Changes saved
@@ -383,17 +390,17 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
           {saved && !hasChanges ? 'Done' : 'Cancel'}
         </Link>
         <button type="submit" className={ui.btnPrimary} disabled={saving || !hasChanges}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? 'Saving…' : 'Save changes'}
         </button>
       </div>
     </form>
   );
 }
 
-function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function Section({ title, description, children, className = '' }: { title: string; description?: string; children: ReactNode; className?: string }) {
   return (
-    <section className={`mt-6 px-6 py-6 ${ui.card}`}>
-      <h2 className="text-[22px] leading-7">{title}</h2>
+    <section className={`px-6 py-6 ${ui.card} ${className}`}>
+      <h2 className="text-lg leading-7 font-medium">{title}</h2>
       {description && <p className={`mt-1 text-sm ${ui.muted}`}>{description}</p>}
       <div className="mt-5">{children}</div>
     </section>

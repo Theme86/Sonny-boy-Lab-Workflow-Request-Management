@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Avatar } from '@/components/Avatar';
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from '@/components/icons';
+import { PageHeading } from '@/components/ProfileView';
 import { StatusBadge } from '@/components/RoleBadge';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { apiFetch } from '@/lib/api';
@@ -156,140 +157,152 @@ function UserManagement({ me }: { me: User }) {
   const first = data && data.total > 0 ? (data.page - 1) * data.pageSize + 1 : 0;
   const last = data ? Math.min(data.page * data.pageSize, data.total) : 0;
 
+  const nameBlock = (u: User) => (
+    <Link href={`/users/${u.userId}`} className={`flex min-w-0 items-center gap-3 rounded-lg ${ui.focus}`}>
+      <Avatar user={u} size="md" />
+      <span className="min-w-0">
+        <span className="block truncate text-[15px] font-medium hover:underline">
+          {fullName(u)}
+          {u.userId === me.userId && <span className={`ml-1 text-sm font-normal ${ui.muted}`}>(you)</span>}
+        </span>
+        <span className={`block truncate text-xs ${ui.muted}`}>{u.email}</span>
+        {(u.studentId || u.department) && (
+          <span className={`block truncate text-xs ${ui.muted}`}>{[u.studentId, u.department].filter(Boolean).join(', ')}</span>
+        )}
+      </span>
+    </Link>
+  );
+
+  const roleSelect = (u: User, className = '') => (
+    <select
+      value={u.role}
+      onChange={(e) => updateRole(u, e.target.value as Role)}
+      disabled={u.userId === me.userId || busyId === u.userId}
+      title={u.userId === me.userId ? "You can't change your own role" : undefined}
+      className={`${ui.select} h-9 ${className}`}
+      aria-label={`Role for ${fullName(u)}`}
+    >
+      {ROLES.map((r) => (
+        <option key={r} value={r}>
+          {ROLE_LABELS[r]}
+        </option>
+      ))}
+    </select>
+  );
+
+  const activeButton = (u: User) =>
+    u.userId === me.userId ? null : (
+      <button
+        type="button"
+        onClick={() => toggleActive(u)}
+        disabled={busyId === u.userId}
+        className={u.active ? ui.btnDanger : `${ui.btnText} h-9`}
+      >
+        {u.active ? 'Deactivate' : 'Reactivate'}
+      </button>
+    );
+
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-[28px] leading-9">Users</h1>
-        <p className={`mt-1 text-base ${ui.muted}`}>Everyone who has signed in to the lab system. Give new lecturers and TAs their role here.</p>
-      </div>
-
-      {/* Filters */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="relative block sm:flex-1">
-          <span className="sr-only">Search users</span>
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[#5f6368] dark:text-[#9aa0a6]" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => changeSearch(e.target.value)}
-            placeholder="Search by name, email, ID or department"
-            className="h-12 w-full rounded-full bg-[#e9eef6] pr-4 pl-11 text-[15px] outline-none placeholder:text-[#5f6368] focus:bg-white focus:shadow-[0_1px_3px_rgba(60,64,67,.3)] dark:bg-[#303134] dark:placeholder:text-[#9aa0a6] dark:focus:bg-[#303134]"
-          />
-        </label>
-        <div className="flex gap-3">
-          <select value={role} onChange={(e) => changeRole(e.target.value as Role | '')} className={`${ui.select} flex-1`} aria-label="Filter by role">
-            <option value="">All roles</option>
-            {ROLES.map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABELS[r]}
-              </option>
-            ))}
-          </select>
-          <select value={status} onChange={(e) => changeStatus(e.target.value as typeof status)} className={`${ui.select} flex-1`} aria-label="Filter by status">
-            <option value="all">Any status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Deactivated</option>
-          </select>
-        </div>
-      </div>
-
-      {error && (
-        <p role="alert" className="mb-4 rounded-lg bg-[#fce8e6] px-4 py-3 text-sm text-[#8c1d18] dark:bg-[#601410] dark:text-[#f9dedc]">
-          {error}
-        </p>
-      )}
+    <div>
+      <PageHeading
+        title="Users"
+        subtitle="Everyone who has signed in to the lab system. Give new lecturers and TAs their role here."
+      />
 
       <div className={`overflow-hidden ${ui.card}`}>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className={ui.muted}>
-              <tr className={`border-b ${ui.border}`}>
-                <SortHeader label="Name" sortKey="name" sort={sort} order={order} onSort={sortBy} />
-                <SortHeader label="Role" sortKey="role" sort={sort} order={order} onSort={sortBy} />
-                <SortHeader label="Registered" sortKey="createdAt" sort={sort} order={order} onSort={sortBy} />
-                <SortHeader label="Last sign-in" sortKey="lastLoginAt" sort={sort} order={order} onSort={sortBy} />
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className={loading ? 'opacity-60' : ''}>
-              {data?.users.map((u) => {
-                const isMe = u.userId === me.userId;
-                const busy = busyId === u.userId;
-                return (
-                  <tr key={u.userId} className={`border-b last:border-b-0 ${ui.border} hover:bg-[#f8f9fa] dark:hover:bg-[#28292a]`}>
-                    <td className="px-4 py-3">
-                      <Link href={`/users/${u.userId}`} className={`flex items-center gap-3 rounded ${ui.focus}`}>
-                        <Avatar user={u} size="md" />
-                        <span className="min-w-0">
-                          <span className="block truncate text-[15px] hover:underline">
-                            {fullName(u)}
-                            {isMe && <span className={`ml-1 text-sm ${ui.muted}`}>(you)</span>}
-                          </span>
-                          <span className={`block truncate text-xs ${ui.muted}`}>{u.email}</span>
-                          {(u.studentId || u.department) && (
-                            <span className={`block truncate text-xs ${ui.muted}`}>
-                              {[u.studentId, u.department].filter(Boolean).join(', ')}
-                            </span>
-                          )}
-                        </span>
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={u.role}
-                        onChange={(e) => updateRole(u, e.target.value as Role)}
-                        disabled={isMe || busy}
-                        title={isMe ? "You can't change your own role" : undefined}
-                        className={`${ui.select} h-9`}
-                        aria-label={`Role for ${fullName(u)}`}
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {ROLE_LABELS[r]}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className={`px-4 py-3 whitespace-nowrap ${ui.muted}`}>{formatDate(u.createdAt)}</td>
-                    <td className={`px-4 py-3 whitespace-nowrap ${ui.muted}`}>{formatDate(u.lastLoginAt, true)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <StatusBadge active={u.active} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {!isMe && (
-                        <button
-                          type="button"
-                          onClick={() => toggleActive(u)}
-                          disabled={busy}
-                          className={u.active ? ui.btnDanger : `${ui.btnText} h-9`}
-                        >
-                          {u.active ? 'Deactivate' : 'Reactivate'}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {data && data.users.length === 0 && (
-                <tr>
-                  <td colSpan={6} className={`px-4 py-16 text-center ${ui.muted}`}>
-                    No users match your search. Try a different name or clear the filters.
-                  </td>
-                </tr>
-              )}
-              {!data && loading && (
-                <tr>
-                  <td colSpan={6} className={`px-4 py-16 text-center ${ui.muted}`}>
-                    Loading users…
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        {/* Filters */}
+        <div className={`flex flex-col gap-3 border-b p-4 lg:flex-row lg:items-center ${ui.border}`}>
+          <label className="relative block lg:flex-1">
+            <span className="sr-only">Search users</span>
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[#5f6368] dark:text-[#9aa0a6]" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => changeSearch(e.target.value)}
+              placeholder="Search by name, email, ID or department"
+              className="h-11 w-full rounded-full bg-[#f1f3f4] pr-4 pl-11 text-[15px] outline-none placeholder:text-[#5f6368] focus:bg-white focus:ring-2 focus:ring-[#1558b0] dark:bg-[#303134] dark:placeholder:text-[#9aa0a6] dark:focus:ring-[#a8c7fa]"
+            />
+          </label>
+          <div className="flex gap-3">
+            <select value={role} onChange={(e) => changeRole(e.target.value as Role | '')} className={`${ui.select} flex-1 lg:w-48 lg:flex-none`} aria-label="Filter by role">
+              <option value="">All roles</option>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABELS[r]}
+                </option>
+              ))}
+            </select>
+            <select value={status} onChange={(e) => changeStatus(e.target.value as typeof status)} className={`${ui.select} flex-1 lg:w-40 lg:flex-none`} aria-label="Filter by status">
+              <option value="all">Any status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Deactivated</option>
+            </select>
+          </div>
         </div>
+
+        {error && (
+          <p role="alert" className="m-4 rounded-lg bg-[#fce8e6] px-4 py-3 text-sm text-[#8c1d18] dark:bg-[#601410] dark:text-[#f9dedc]">
+            {error}
+          </p>
+        )}
+
+        {/* Phones: one card per person */}
+        <ul className={`md:hidden ${loading ? 'opacity-60' : ''}`}>
+          {data?.users.map((u) => (
+            <li key={u.userId} className={`border-b px-4 py-4 last:border-b-0 ${ui.border}`}>
+              {nameBlock(u)}
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                {roleSelect(u, 'min-w-0 flex-1')}
+                <StatusBadge active={u.active} />
+                {activeButton(u)}
+              </div>
+              <p className={`mt-2 text-xs ${ui.muted}`}>
+                Registered {formatDate(u.createdAt)}, last sign-in {formatDate(u.lastLoginAt)}
+              </p>
+            </li>
+          ))}
+        </ul>
+
+        {/* Tablets and up: a table that fits the screen (no sideways scrolling) */}
+        <table className="hidden w-full table-auto text-left text-sm md:table">
+          <thead className={ui.muted}>
+            <tr className={`border-b ${ui.border}`}>
+              <SortHeader label="Name" sortKey="name" sort={sort} order={order} onSort={sortBy} />
+              <SortHeader label="Role" sortKey="role" sort={sort} order={order} onSort={sortBy} />
+              <SortHeader label="Registered" sortKey="createdAt" sort={sort} order={order} onSort={sortBy} className="hidden 2xl:table-cell" />
+              <SortHeader label="Last sign-in" sortKey="lastLoginAt" sort={sort} order={order} onSort={sortBy} className="hidden xl:table-cell" />
+              <th className="hidden px-4 py-3 font-medium lg:table-cell">Status</th>
+              <th className="px-4 py-3">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className={loading ? 'opacity-60' : ''}>
+            {data?.users.map((u) => (
+              <tr key={u.userId} className={`border-b last:border-b-0 ${ui.border} hover:bg-[#f8f9fa] dark:hover:bg-[#28292a]`}>
+                <td className="w-full max-w-0 px-4 py-3">
+                  {nameBlock(u)}
+                  <p className={`mt-1 pl-[52px] text-xs xl:hidden ${ui.muted}`}>
+                    Last sign-in {formatDate(u.lastLoginAt)}
+                    {!u.active && ' · Deactivated'}
+                  </p>
+                </td>
+                <td className="px-4 py-3">{roleSelect(u, 'w-44')}</td>
+                <td className={`hidden px-4 py-3 whitespace-nowrap 2xl:table-cell ${ui.muted}`}>{formatDate(u.createdAt)}</td>
+                <td className={`hidden px-4 py-3 whitespace-nowrap xl:table-cell ${ui.muted}`}>{formatDate(u.lastLoginAt, true)}</td>
+                <td className="hidden px-4 py-3 whitespace-nowrap lg:table-cell">
+                  <StatusBadge active={u.active} />
+                </td>
+                <td className="px-4 py-3 text-right whitespace-nowrap">{activeButton(u)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {data && data.users.length === 0 && (
+          <p className={`px-4 py-16 text-center text-sm ${ui.muted}`}>No users match your search. Try a different name or clear the filters.</p>
+        )}
+        {!data && loading && <p className={`px-4 py-16 text-center text-sm ${ui.muted}`}>Loading users…</p>}
 
         {data && data.total > 0 && (
           <div className={`flex items-center justify-end gap-2 border-t px-4 py-2 text-sm ${ui.border} ${ui.muted}`}>
@@ -344,16 +357,18 @@ function SortHeader({
   sort,
   order,
   onSort,
+  className = '',
 }: {
   label: string;
   sortKey: SortKey;
   sort: SortKey;
   order: 'asc' | 'desc';
   onSort: (key: SortKey) => void;
+  className?: string;
 }) {
   const active = sort === sortKey;
   return (
-    <th className="px-4 py-3 font-medium" aria-sort={active ? (order === 'asc' ? 'ascending' : 'descending') : undefined}>
+    <th className={`px-4 py-3 font-medium ${className}`} aria-sort={active ? (order === 'asc' ? 'ascending' : 'descending') : undefined}>
       <button
         type="button"
         onClick={() => onSort(sortKey)}

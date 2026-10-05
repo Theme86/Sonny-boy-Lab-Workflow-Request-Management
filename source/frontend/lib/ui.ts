@@ -1,13 +1,14 @@
-// lib/ui.ts — shared class names so every page uses the same quiet, formal look.
+// lib/ui.ts — shared class names so every page uses the same look: soft grey canvas, white cards.
 // Colors: ink #1f1f1f, secondary #5f6368, outline #dadce0, primary #1558b0, danger #b3261e.
 
 const focus = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1558b0] dark:focus-visible:outline-[#a8c7fa]';
 
 export const ui = {
-  page: 'bg-white text-[#1f1f1f] dark:bg-[#1f1f1f] dark:text-[#e3e3e3]',
+  page: 'bg-[#f4f6fa] text-[#1f1f1f] dark:bg-[#131314] dark:text-[#e3e3e3]',
+  surface: 'bg-[#f4f6fa] dark:bg-[#131314]',
   muted: 'text-[#5f6368] dark:text-[#9aa0a6]',
   border: 'border-[#dadce0] dark:border-[#3c4043]',
-  card: 'rounded-lg border border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#1f1f1f]',
+  card: 'rounded-2xl bg-white shadow-[0_1px_2px_rgba(60,64,67,.14),0_1px_3px_1px_rgba(60,64,67,.07)] dark:bg-[#1e1f20] dark:shadow-none dark:ring-1 dark:ring-[#3c4043]',
   hover: 'hover:bg-[#f1f3f4] dark:hover:bg-[#2d2e30]',
   link: `rounded font-medium text-[#1558b0] hover:underline dark:text-[#a8c7fa] ${focus}`,
 
@@ -20,7 +21,7 @@ export const ui = {
     'block w-full rounded border border-[#747775] bg-transparent px-3.5 py-2.5 text-[15px] outline-none transition-colors placeholder:text-[#5f6368]/70 focus:border-[#1558b0] focus:ring-1 focus:ring-[#1558b0] disabled:cursor-not-allowed disabled:border-[#dadce0] disabled:text-[#5f6368] dark:border-[#8e918f] dark:focus:border-[#a8c7fa] dark:focus:ring-[#a8c7fa] dark:disabled:border-[#3c4043] dark:disabled:text-[#9aa0a6]',
   inputError: 'border-[#b3261e] focus:border-[#b3261e] focus:ring-[#b3261e] dark:border-[#f2b8b5] dark:focus:border-[#f2b8b5] dark:focus:ring-[#f2b8b5]',
   select:
-    'h-10 rounded border border-[#747775] bg-transparent px-3 text-sm outline-none focus:border-[#1558b0] focus:ring-1 focus:ring-[#1558b0] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#8e918f] dark:bg-[#1f1f1f] dark:focus:border-[#a8c7fa] dark:focus:ring-[#a8c7fa]',
+    'h-10 rounded border border-[#747775] bg-transparent px-3 text-sm outline-none focus:border-[#1558b0] focus:ring-1 focus:ring-[#1558b0] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#8e918f] dark:bg-[#1e1f20] dark:focus:border-[#a8c7fa] dark:focus:ring-[#a8c7fa]',
 
   errorText: 'text-[#b3261e] dark:text-[#f2b8b5]',
   focus,

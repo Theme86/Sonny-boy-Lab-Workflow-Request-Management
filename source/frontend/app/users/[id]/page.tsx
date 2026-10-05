@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ArrowBackIcon } from '@/components/icons';
-import { ProfileDetails, ProfileHeader } from '@/components/ProfileView';
+import { ProfileDetails, ProfileHeader, ProfileLayout } from '@/components/ProfileView';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { apiFetch } from '@/lib/api';
 import { ui } from '@/lib/ui';
@@ -53,7 +53,7 @@ function UserProfile() {
   const { user, error } = result;
   if (error || !user) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <div>
         {back}
         <div className="py-16 text-center">
           <h1 className="text-[22px]">This profile isn&apos;t available</h1>
@@ -66,19 +66,24 @@ function UserProfile() {
   const isMe = me?.userId === user.userId;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       {back}
-      <ProfileHeader
-        user={user}
-        action={
-          isMe ? (
-            <Link href="/profile/edit" className={ui.btnOutline}>
-              Edit profile
-            </Link>
-          ) : undefined
+      <ProfileLayout
+        left={
+          <ProfileHeader
+            user={user}
+            action={
+              isMe ? (
+                <Link href="/profile/edit" className={ui.btnPrimary}>
+                  Edit profile
+                </Link>
+              ) : undefined
+            }
+          />
         }
-      />
-      <ProfileDetails user={user} editable={isMe} />
+      >
+        <ProfileDetails user={user} editable={isMe} />
+      </ProfileLayout>
     </div>
   );
 }
