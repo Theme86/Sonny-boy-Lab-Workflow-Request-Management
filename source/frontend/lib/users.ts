@@ -39,7 +39,7 @@ export function validateProfile(f: ProfileFields): Partial<Record<keyof ProfileF
   if (!f.lastName.trim()) errors.lastName = 'Last name is required.';
   else if (f.lastName.trim().length > PROFILE_LIMITS.name) errors.lastName = `At most ${PROFILE_LIMITS.name} characters.`;
   const id = f.studentId.trim();
-  if (id && !/^[A-Za-z0-9-]+$/.test(id)) errors.studentId = 'Only letters, numbers and "-".';
+  if (id && !/^[0-9]+$/.test(id)) errors.studentId = 'Use numbers only.';
   else if (id.length > PROFILE_LIMITS.studentId) errors.studentId = `At most ${PROFILE_LIMITS.studentId} characters.`;
   const phone = f.phone.trim();
   if (phone && !/^\+?[0-9][0-9\s-]{5,}$/.test(phone)) errors.phone = 'Use digits, spaces or "-", e.g. 081-234-5678.';

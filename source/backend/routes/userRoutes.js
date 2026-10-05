@@ -108,7 +108,7 @@ router.patch('/me', async (req, res) => {
   if (body.firstName !== undefined) data.firstName = cleanName(body.firstName, 'First name');
   if (body.lastName !== undefined) data.lastName = cleanName(body.lastName, 'Last name');
   if (body.studentId !== undefined) {
-    data.studentId = cleanOptional(body.studentId, 'Student / staff ID', 20, /^[A-Za-z0-9-]+$/, 'Student / staff ID can only contain letters, numbers and "-"');
+    data.studentId = cleanOptional(body.studentId, 'Student / staff ID', 20, /^[0-9]+$/, 'Student / staff ID must be a number');
   }
   if (body.phone !== undefined) {
     data.phone = cleanOptional(body.phone, 'Phone number', 20, /^\+?[0-9][0-9\s-]{5,}$/, 'Phone number can only contain digits, spaces, "-" and a leading "+"');

@@ -168,14 +168,15 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
     }
   }
 
-  function textInput(key: keyof ProfileFields, label: string, opts: { placeholder?: string; autoComplete?: string; required?: boolean; hint?: string; type?: string } = {}) {
+  function textInput(key: keyof ProfileFields, label: string, opts: { placeholder?: string; autoComplete?: string; required?: boolean; hint?: string; type?: string; digitsOnly?: boolean } = {}) {
     const max = key === 'firstName' || key === 'lastName' ? PROFILE_LIMITS.name : PROFILE_LIMITS[key as 'studentId' | 'phone' | 'department'];
     return (
       <Field label={label} required={opts.required} error={errors[key]} hint={opts.hint}>
         <input
           type={opts.type ?? 'text'}
           value={fields[key]}
-          onChange={(e) => setField(key, e.target.value)}
+          onChange={(e) => setField(key, opts.digitsOnly ? e.target.value.replace(/\D/g, '') : e.target.value)}
+          inputMode={opts.digitsOnly ? 'numeric' : undefined}
           maxLength={max}
           placeholder={opts.placeholder}
           autoComplete={opts.autoComplete}
@@ -231,7 +232,7 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
 
   const labFields = (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-      {textInput('studentId', 'Student / staff ID', { placeholder: '6710545725' })}
+      {textInput('studentId', 'Student / staff ID', { placeholder: '6710545725', digitsOnly: true })}
       {textInput('phone', 'Phone number', { placeholder: '081 234 5678', autoComplete: 'tel', type: 'tel' })}
       <div className="sm:col-span-2">
         {textInput('department', 'Faculty / department', { placeholder: 'Software and Knowledge Engineering' })}
