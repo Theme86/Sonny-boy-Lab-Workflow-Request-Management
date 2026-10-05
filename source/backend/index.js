@@ -11,6 +11,7 @@ const { prisma } = require('./lib/prisma');
 // Import Routes
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
+const requestRoutes = require('./routes/requestRoutes');
 const consumableRoutes = require('./routes/consumableRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 
@@ -32,7 +33,8 @@ app.use('/api/users', userRoutes);
 app.use('/auth', authRoutes);
 app.use('/userImages', express.static(path.join(__dirname, 'public', 'userImages')));
 app.use('/api/consumables', consumableRoutes);
-app.use('/api/equipment', equipmentRoutes);   
+app.use('/api/equipment', equipmentRoutes);
+app.use('/api/requests', requestRoutes);
 
 
 // Simple Health Check Route
