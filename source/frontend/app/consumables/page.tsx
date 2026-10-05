@@ -24,6 +24,7 @@ export default function ConsumablesPage() {
   const [unit, setUnit] = useState('');
   const [currentStock, setCurrentStock] = useState('');
   const [reorderThreshold, setReorderThreshold] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -54,6 +55,7 @@ export default function ConsumablesPage() {
     setUnit('');
     setCurrentStock('');
     setReorderThreshold('');
+    setExpiryDate('');
     setSubmitError(null);
   }
 
@@ -63,6 +65,7 @@ export default function ConsumablesPage() {
     setUnit(item.unit);
     setCurrentStock(String(item.currentStock));
     setReorderThreshold(String(item.reorderThreshold));
+    setExpiryDate(item.expiryDate ? item.expiryDate.slice(0, 10) : '');
     setSubmitError(null);
   }
 
@@ -85,6 +88,7 @@ export default function ConsumablesPage() {
           unit,
           currentStock: Number(currentStock) || 0,
           reorderThreshold: Number(reorderThreshold) || 0,
+          expiryDate: expiryDate || null,
         }),
       });
 
@@ -148,6 +152,7 @@ export default function ConsumablesPage() {
           <input placeholder="Unit (e.g. ml, g)" value={unit} onChange={(e) => setUnit(e.target.value)} required />
           <input placeholder="Current Stock" type="number" value={currentStock} onChange={(e) => setCurrentStock(e.target.value)} />
           <input placeholder="Reorder Threshold" type="number" value={reorderThreshold} onChange={(e) => setReorderThreshold(e.target.value)} />
+          <input placeholder="Expiry Date" type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
           <button type="submit">{editingId !== null ? 'Save' : 'Add'}</button>
           {editingId !== null && (
             <button type="button" onClick={resetForm}>Cancel</button>

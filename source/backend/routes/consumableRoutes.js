@@ -6,7 +6,7 @@ const { requireAuth,  requireRole } = require('../middleware/auth');
 // GET /api/consumables
 router.get('/', requireAuth,  async (req, res) => {
     const search = req.query.search;
-    const consumables =  await prisma.consumables.findMany({
+    const consumables =  await prisma.consumable.findMany({
         where: search
             ? { name: { contains: search } }
             : undefined,
@@ -37,7 +37,7 @@ router.post('/', requireAuth, requireRole('lab_manager', 'lecturer'), async (req
     return res.status(400).json({ error: 'name and unit are required' });
   }
 
-  const consumable = await prisma.consumables.create({
+  const consumable = await prisma.consumable.create({
     data: {
       name,
       unit,
@@ -63,7 +63,7 @@ router.put('/:id', requireAuth, requireRole('lab_manager', 'lecturer'), async (r
   const { name, unit, currentStock, reorderThreshold, expiryDate, description, phValue, imageUrl } = req.body;
 
   try {
-    const consumable = await prisma.consumables.update({
+    const consumable = await prisma.consumable.update({
       where: { consumableId },
       data: {
         ...(name !== undefined && { name }),
@@ -94,7 +94,7 @@ router.delete('/:id', requireAuth, requireRole('lab_manager', 'lecturer'), async
   }
 
   try {
-    await prisma.consumables.delete({ where: { consumableId } });
+    await prisma.consumable.delete({ where: { consumableId } });
     res.status(204).send();
   } catch (err) {
     if (err.code === 'P2025') {
