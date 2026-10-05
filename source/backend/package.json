@@ -11,7 +11,8 @@
   },
   "scripts": {
     "start": "node -r tsx/cjs index.js",
-    "dev": "nodemon --exec \"node -r tsx/cjs\" index.js"
+    "dev": "nodemon --exec \"node -r tsx/cjs\" index.js",
+    "set-role": "node -r tsx/cjs scripts/set-role.js"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.10.0",
