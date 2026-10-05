@@ -12,6 +12,7 @@
   "scripts": {
     "start": "node -r tsx/cjs index.js",
     "dev": "nodemon --exec \"node -r tsx/cjs\" index.js",
+    "set-role": "node -r tsx/cjs scripts/set-role.js",
     "test": "node --test"
   },
   "dependencies": {
@@ -40,4 +41,3 @@
     "deepmerge-ts": "8.0.2"
   }
 }
-

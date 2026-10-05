@@ -78,8 +78,8 @@ DATABASE_USER="user"
 DATABASE_PASSWORD="password"
 DATABASE_NAME="mydb"
 DATABASE_HOST="localhost"
-DATABASE_PORT=3306
-DATABASE_URL="mysql://user:password@localhost:3306/mydb"
+DATABASE_PORT=3307
+DATABASE_URL="mysql://user:password@localhost:3307/mydb"
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 JWT_SECRET=some-long-random-string
 ```
@@ -107,16 +107,17 @@ cd ../source
 docker compose up -d db
 ```
 
-This starts the MySQL container on port `3306`.
+This starts the MySQL container on port `3307` on your machine (`3306` inside the container).
 
 ### 5) Run Prisma migrations
 
 ```bash
 cd backend
-npx prisma migrate dev
+npx prisma migrate deploy
+npx prisma generate
 ```
 
-This creates the database schema and applies all migrations.
+This applies all migrations and generates the Prisma client. Use `migrate deploy`, not `migrate dev`: the `user` MySQL account cannot create the shadow database that `migrate dev` needs. Run these two commands again whenever you pull a new migration.
 
 ### 6) Start the backend
 
@@ -153,7 +154,7 @@ docker compose up --build
 
 This starts:
 
-- MySQL database on port `3306`
+- MySQL database on port `3307`
 - Backend on port `5175`
 - Frontend on port `3000`
 
@@ -171,7 +172,8 @@ docker compose down
 cd source/backend
 npm install
 npm run dev
-npx prisma migrate dev
+npx prisma migrate deploy
+npx prisma generate
 npx prisma studio
 ```
 
@@ -212,7 +214,7 @@ Run:
 ```bash
 cd source/backend
 npx prisma migrate reset
-npx prisma migrate dev
+npx prisma generate
 ```
 
 ### Frontend cannot reach backend
