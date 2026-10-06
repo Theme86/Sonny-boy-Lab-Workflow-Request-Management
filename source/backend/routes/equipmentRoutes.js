@@ -61,13 +61,6 @@ function buildData(body, { partial }) {
     data.imageUrl = body.imageUrl;
   }
 
-  if (body.categoryId !== undefined) {
-    if (body.categoryId !== null && !(Number.isInteger(body.categoryId) && body.categoryId > 0)) {
-      throw httpError(400, 'categoryId must be a positive integer or null');
-    }
-    data.categoryId = body.categoryId;
-  }
-
   if (body.quantityTotal !== undefined) {
     if (!isNonNegInt(body.quantityTotal)) throw httpError(400, 'quantityTotal must be an integer >= 0');
     data.quantityTotal = body.quantityTotal;
@@ -93,32 +86,31 @@ function parsePropertyIds(body) {
 // Prisma error codes -> clean HTTP errors
 function mapPrismaError(err) {
   if (err.code === 'P2025') return httpError(404, 'Equipment not found');
-  if (err.code === 'P2003') return httpError(409, 'Invalid categoryId/propertyId, or equipment is still referenced by other data');
+  if (err.code === 'P2003') return httpError(409, 'Invalid propertyId, or equipment is still referenced by other data');
   return err;
 }
 
 const equipmentInclude = {
-  category: true,
   properties: { include: { property: true } },
 };
 
-// shape the response: flatten PropEquip join rows into a plain properties array
+// shape the response: flatten PropEquip join rows into a plain properties array,
 function toResponse(e) {
+  const { categoryId, ...rest } = e;
   return {
-    ...e,
+    ...rest,
     properties: e.properties.map((p) => p.property),
   };
 }
 
 // READ list
-// GET /api/equipment?q=microscope&categoryId=2&available=true&page=1&limit=20
+// GET /api/equipment?q=microscope&category=true&page=1&limit=20
 router.get('/', requireAuth, async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
 
   const where = {};
   if (req.query.q) where.name = { contains: String(req.query.q) };
-  if (req.query.categoryId) where.categoryId = parseId(req.query.categoryId);
   if (req.query.available === 'true') where.quantityAvailable = { gt: 0 };
 
   const [items, total] = await Promise.all([
@@ -151,7 +143,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 
 // CREATE 
 // POST /api/equipment
-// body: { name, description?, categoryId?, quantityTotal?, quantityAvailable?, location?, imageUrl?, propertyIds? }
+// body: { name, description?, quantityTotal?, quantityAvailable?, location?, imageUrl?, propertyIds? }
 router.post('/', requireAuth, canManage, async (req, res) => {
   const data = buildData(req.body ?? {}, { partial: false });
   const propertyIds = parsePropertyIds(req.body ?? {});
