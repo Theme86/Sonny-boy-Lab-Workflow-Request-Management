@@ -14,6 +14,7 @@ const authRoutes = require('./routes/authRoutes');
 const requestRoutes = require('./routes/requestRoutes');
 const consumableRoutes = require('./routes/consumableRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
+const notificationRouter = require("./routes/notificationRoutes");
 
 
 const app = express();
@@ -35,6 +36,7 @@ app.use('/userImages', express.static(path.join(__dirname, 'public', 'userImages
 app.use('/api/consumables', consumableRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/requests', requestRoutes);
+app.use("/api/notifications", requireAuth, notificationRouter);
 
 
 // Simple Health Check Route
