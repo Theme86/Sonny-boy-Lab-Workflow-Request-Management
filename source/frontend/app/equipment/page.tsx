@@ -11,8 +11,6 @@ type Equipment = {
   equipmentId: number;
   name: string;
   description: string | null;
-  categoryId: number | null;
-  category: { categoryId: number; name: string } | null;
   quantityTotal: number;
   quantityAvailable: number;
   location: string | null;
@@ -42,7 +40,6 @@ export default function EquipmentPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [categoryId, setCategoryId] = useState('');
   const [quantityTotal, setQuantityTotal] = useState('');
   const [quantityAvailable, setQuantityAvailable] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -91,7 +88,6 @@ export default function EquipmentPage() {
     setName('');
     setDescription('');
     setLocation('');
-    setCategoryId('');
     setQuantityTotal('');
     setQuantityAvailable('');
     setSubmitError(null);
@@ -102,7 +98,6 @@ export default function EquipmentPage() {
     setName(item.name);
     setDescription(item.description ?? '');
     setLocation(item.location ?? '');
-    setCategoryId(item.categoryId !== null ? String(item.categoryId) : '');
     setQuantityTotal(String(item.quantityTotal));
     setQuantityAvailable(String(item.quantityAvailable));
     setSubmitError(null);
@@ -125,7 +120,6 @@ export default function EquipmentPage() {
       name,
       description: description || null,
       location: location || null,
-      categoryId: categoryId ? Number(categoryId) : null,
       quantityTotal: total,
     };
     // on create, leaving "available" empty makes the backend use the total
@@ -213,7 +207,6 @@ export default function EquipmentPage() {
           <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} maxLength={150} required />
           <input placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={250} />
           <input placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} maxLength={100} />
-          <input placeholder="Category ID" type="number" min={1} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} />
           <input placeholder="Total" type="number" min={0} value={quantityTotal} onChange={(e) => setQuantityTotal(e.target.value)} />
           <input placeholder="Available" type="number" min={0} value={quantityAvailable} onChange={(e) => setQuantityAvailable(e.target.value)} />
           <button type="submit">{editingId !== null ? 'Save' : 'Add'}</button>
@@ -226,7 +219,6 @@ export default function EquipmentPage() {
         <thead>
           <tr>
             <th style={cellStyle}>Name</th>
-            <th style={cellStyle}>Category</th>
             <th style={cellStyle}>Location</th>
             <th style={cellStyle}>Available / Total</th>
             {canManage && <th style={cellStyle}>Actions</th>}
@@ -235,7 +227,7 @@ export default function EquipmentPage() {
         <tbody>
           {items.length === 0 && (
             <tr>
-              <td style={cellStyle} colSpan={canManage ? 5 : 4}>No equipment found.</td>
+              <td style={cellStyle} colSpan={canManage ? 4 : 3}>No equipment found.</td>
             </tr>
           )}
           {items.map((item) => (
@@ -250,7 +242,6 @@ export default function EquipmentPage() {
                   <div style={{ fontSize: 12, opacity: 0.7 }}>{item.description}</div>
                 )}
               </td>
-              <td style={cellStyle}>{item.category?.name ?? '-'}</td>
               <td style={cellStyle}>{item.location ?? '-'}</td>
               <td style={cellStyle}>{item.quantityAvailable} / {item.quantityTotal}</td>
               {canManage && (
