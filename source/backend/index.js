@@ -11,7 +11,10 @@ const { prisma } = require('./lib/prisma');
 // Import Routes
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
+const requestRoutes = require('./routes/requestRoutes');
 const consumableRoutes = require('./routes/consumableRoutes');
+const equipmentRoutes = require('./routes/equipmentRoutes');
+const notificationRouter = require("./routes/notificationRoutes");
 
 
 const app = express();
@@ -31,6 +34,9 @@ app.use('/api/users', userRoutes);
 app.use('/auth', authRoutes);
 app.use('/userImages', express.static(path.join(__dirname, 'public', 'userImages')));
 app.use('/api/consumables', consumableRoutes);
+app.use('/api/equipment', equipmentRoutes);
+app.use('/api/requests', requestRoutes);
+app.use("/api/notifications", requireAuth, notificationRouter);
 
 
 // Simple Health Check Route
@@ -45,9 +51,12 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
-  const status = err.status || 500;
+  const status = err.status || err.statusCode || 500;
+  // 4xx messages are meant for the user (e.g. "First name is required"), so always send them.
+  // Only hide unexpected 5xx details in production.
+  const hideDetails = status >= 500 && process.env.NODE_ENV === 'production';
   res.status(status).json({
-    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+    error: hideDetails ? 'Internal server error' : err.message,
   });
 });
 

@@ -85,6 +85,14 @@ model User {
   lastLoginAt DateTime? @map("last_login_at")
   active      Boolean   @default(true)
 
+  // Profile details (filled in on the "create profile" page after first login)
+  studentId          String?   @map("student_id") @db.VarChar(20)
+  phone              String?   @db.VarChar(20)
+  department         String?   @db.VarChar(150)
+  bio                String?   @db.VarChar(300)
+  // NULL until the user finishes the "create profile" page
+  profileCompletedAt DateTime? @map("profile_completed_at")
+
   ownedProjects        Project[]
   sessionsRequested    LabSession[]          @relation("SessionRequestedBy")
   sessionsApproved     LabSession[]          @relation("SessionApprovedBy")
