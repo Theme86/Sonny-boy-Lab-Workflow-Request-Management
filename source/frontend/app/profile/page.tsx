@@ -1,33 +1,44 @@
-// app/profile/page.tsx
+// app/profile/page.tsx — my profile ("Personal info")
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useRequireAuth } from '@/hooks/useRequireAuth';
+import Link from 'next/link';
+import { AppShell } from '@/components/AppShell';
+import { PageHeading, ProfileDetails, ProfileHeader, ProfileLayout } from '@/components/ProfileView';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { ui } from '@/lib/ui';
 
 export default function ProfilePage() {
-  const router = useRouter();
+  return (
+    <AppShell>
+      <MyProfile />
+    </AppShell>
+  );
+}
 
-  // Checking if user is login or have cookie token
-  const { user, loading, error } = useRequireAuth();
-
-  async function handleLogout() {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    router.push('/login');
-  }
-
-  if (loading) return <p style={{ padding: 32 }}>Loading...</p>;
-  if (error) return <p style={{ padding: 32, color: 'red' }}>{error}</p>;
-  if (!user) return null; // already redirecting to /login
+function MyProfile() {
+  const { user } = useCurrentUser();
+  if (!user) return null;
 
   return (
-    <div style={{ padding: 32, fontFamily: 'monospace' }}>
-      <h1>My Profile</h1>
-      <p><strong>User ID:</strong> {user.userId}</p>
-      <p><strong>Role:</strong> {user.role}</p>
-      <button type="button" onClick={handleLogout}>Log out</button>
+    <div>
+      <PageHeading title="Personal info" subtitle="Your profile in the lab system and the details the lab team uses to reach you." />
+      <ProfileLayout
+        left={
+          <ProfileHeader
+            user={user}
+            action={
+              <Link href="/profile/edit" className={ui.btnPrimary}>
+                Edit profile
+              </Link>
+            }
+          />
+        }
+      >
+        <ProfileDetails user={user} editable />
+        <p className={`mt-6 text-xs ${ui.muted}`}>
+          You sign in with Google, so your email address can only be changed in your Google account.
+        </p>
+      </ProfileLayout>
     </div>
   );
 }

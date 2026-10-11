@@ -21,7 +21,7 @@ export default function LoginPage() {
   useEffect(() => {
     fetch(`${API_URL}/auth/me`, { credentials: 'include' })
       .then((res) => {
-        if (res.ok) router.replace('/sessions');
+        if (res.ok) router.replace('/profile');
       })
       .catch(() => {});
   }, [router]);
@@ -38,7 +38,7 @@ export default function LoginPage() {
         });
 
         if (res.ok) {
-          router.push('/sessions');
+          router.push('/profile');
         } else {
           const err = await res.json().catch(() => null);
           setError(err?.error ?? 'Login failed');
