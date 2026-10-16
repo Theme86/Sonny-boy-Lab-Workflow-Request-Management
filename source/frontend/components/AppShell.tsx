@@ -13,6 +13,7 @@ import { apiFetch } from '@/lib/api';
 import { fontStyle, fontVariables } from '@/lib/fonts';
 import { ui } from '@/lib/ui';
 import { fullName, ROLE_LABELS } from '@/lib/users';
+import { EquipmentIcon } from '@/components/equipmentIcons';
 
 const SETUP_PATH = '/profile/setup';
 
@@ -78,6 +79,7 @@ function useNavItems() {
   if (!user?.profileCompletedAt) return []; // no navigation until the profile is created
   return [
     { href: '/profile', label: 'Personal info', icon: PersonIcon },
+    { href: '/equipment', label: 'Equipment', icon: EquipmentIcon },
     ...(user.role === 'lab_manager' ? [{ href: '/users', label: 'Users', icon: GroupIcon }] : []),
   ];
 }
