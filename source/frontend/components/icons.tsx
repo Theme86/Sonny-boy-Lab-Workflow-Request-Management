@@ -75,3 +75,38 @@ export function CameraIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function HomeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3 2 11.5h3V20h5.5v-5.5h3V20H19v-8.5h3z" />
+    </Svg>
+  );
+}
+
+/** Requests: a clipboard with lines. */
+export function RequestIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M15 3.5h3a2 2 0 0 1 2 2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2h3A3 3 0 0 1 12 1a3 3 0 0 1 3 2.5zM12 3a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM7.5 9v2h9V9zm0 4v2h9v-2zm0 4v2h6v-2z" />
+    </Svg>
+  );
+}
+
+/** Consumables: a flask. */
+export function FlaskIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 2h8v2h-1.2v5.1l5.7 9.6A2.2 2.2 0 0 1 18.6 22H5.4a2.2 2.2 0 0 1-1.9-3.3l5.7-9.6V4H8zm3.2 2v5.6L9.4 12.7h5.2l-1.8-3.1V4z" />
+    </Svg>
+  );
+}
+
+/** Equipment: a microscope. */
+export function MicroscopeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9.5 2.6 13 1.1l3.4 7.8-3.5 1.5zM10 11.5a3.5 3.5 0 0 0 3.2 3.5l.8-1.9 1.8-.8a5.5 5.5 0 0 1-3.6 4.6L13 18h6v2H5v-2h5.2a5.5 5.5 0 0 1-2.2-6.5zM4 20h16v2H4z" />
+    </Svg>
+  );
+}

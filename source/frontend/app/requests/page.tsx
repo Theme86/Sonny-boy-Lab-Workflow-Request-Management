@@ -2,6 +2,7 @@
 // Shows the logged-in user's submitted requests (staff see everyone's).
 'use client';
 
+import { AppShell } from '@/components/AppShell';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -15,7 +16,7 @@ import {
 } from '@/lib/requests';
 import StatusBadge from './StatusBadge';
 
-export default function RequestsPage() {
+function RequestsPageContent() {
   const { user, loading: authLoading, error: authError } = useRequireAuth();
   const [items, setItems] = useState<RequestItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -49,7 +50,7 @@ export default function RequestsPage() {
   if (!user) return null; // redirecting to /login
 
   return (
-    <main className="mx-auto w-full max-w-5xl p-6 sm:p-8">
+    <div className="mx-auto w-full max-w-5xl p-6 sm:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{isStaff ? 'All requests' : 'My requests'}</h1>
@@ -131,6 +132,15 @@ export default function RequestsPage() {
           </table>
         </div>
       )}
-    </main>
+    </div>
+  );
+}
+
+// Wrapped in AppShell so the page gets the top bar, navigation and theme toggle.
+export default function RequestsPage() {
+  return (
+    <AppShell>
+      <RequestsPageContent />
+    </AppShell>
   );
 }

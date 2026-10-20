@@ -15,6 +15,7 @@ const requestRoutes = require('./routes/requestRoutes');
 const consumableRoutes = require('./routes/consumableRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 const notificationRouter = require("./routes/notificationRoutes");
+const { requireAuth } = require('./middleware/auth');
 
 
 const app = express();
