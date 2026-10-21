@@ -1,5 +1,6 @@
 'use client';
 
+import { AppShell } from '@/components/AppShell';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useEffect, useState, FormEvent } from 'react';
 
@@ -14,7 +15,7 @@ type Consumable = {
   expiryDate: string | null;
 };
 
-export default function ConsumablesPage() {
+function ConsumablesPageContent() {
   const { user, loading, error } = useRequireAuth();
   const [consumables, setConsumables] = useState<Consumable[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -195,5 +196,14 @@ export default function ConsumablesPage() {
         </tbody>
       </table>
     </div>
+  );
+}
+
+// Wrapped in AppShell so the page gets the top bar, navigation and theme toggle.
+export default function ConsumablesPage() {
+  return (
+    <AppShell>
+      <ConsumablesPageContent />
+    </AppShell>
   );
 }

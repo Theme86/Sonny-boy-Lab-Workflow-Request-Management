@@ -2,6 +2,7 @@
 // Submit-request form (US-01).
 'use client';
 
+import { AppShell } from '@/components/AppShell';
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -35,7 +36,7 @@ function Field({
   );
 }
 
-export default function NewRequestPage() {
+function NewRequestPageContent() {
   const router = useRouter();
   const { user, loading, error: authError } = useRequireAuth();
   const [values, setValues] = useState<FormValues>(emptyForm);
@@ -88,7 +89,7 @@ export default function NewRequestPage() {
   if (!user) return null; // redirecting to /login
 
   return (
-    <main className="mx-auto w-full max-w-2xl p-6 sm:p-8">
+    <div className="mx-auto w-full max-w-2xl p-6 sm:p-8">
       <Link href="/requests" className="text-sm text-zinc-500 hover:underline">← Back to requests</Link>
       <h1 className="mt-2 mb-6 text-2xl font-semibold">Submit a request</h1>
 
@@ -205,6 +206,15 @@ export default function NewRequestPage() {
           </Link>
         </div>
       </form>
-    </main>
+    </div>
+  );
+}
+
+// Wrapped in AppShell so the page gets the top bar, navigation and theme toggle.
+export default function NewRequestPage() {
+  return (
+    <AppShell>
+      <NewRequestPageContent />
+    </AppShell>
   );
 }
