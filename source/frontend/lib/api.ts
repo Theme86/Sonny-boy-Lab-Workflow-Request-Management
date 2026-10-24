@@ -3,9 +3,12 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5175
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** Field-by-field messages when the backend answers 400 "Validation failed". */
+  details?: Record<string, string>;
+  constructor(status: number, message: string, details?: Record<string, string>) {
     super(message);
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -36,7 +39,7 @@ export async function apiFetch<T>(
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new ApiError(res.status, data?.error ?? `Request failed (${res.status})`);
+    throw new ApiError(res.status, data?.error ?? `Request failed (${res.status})`, data?.details);
   }
   return data as T;
 }

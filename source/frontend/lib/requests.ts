@@ -1,20 +1,21 @@
 // frontend/lib/requests.ts
-// Shared types, labels and client-side validation for the Request feature (US-01).
+// Shared types, labels and client-side validation for the Request feature.
 // Limits/enum values mirror backend/utils/validateRequest.js and prisma/schema.prisma.
-
-export const API_URL = process.env.NEXT_PUBLIC_API_URL;
+// (Which status can follow which lives in the backend: it sends `allowedStatuses`.)
 
 export const LIMITS = { titleMin: 3, titleMax: 150, descMin: 5, descMax: 250 };
 
 // Types this form can submit (consumable / equipment requests have their own forms)
 export const FORM_TYPES = [
   { value: 'ticket', label: 'General ticket (e.g. script fix)' },
-  { value: 'maintenance', label: 'Equipment issue / maintenance' },
+  { value: 'maintenance', label: 'Equipment issue or maintenance' },
   { value: 'access_permission', label: 'Access permission' },
 ] as const;
 
 export const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+export const PRIORITY_LABELS: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', urgent: 'Urgent' };
 export const RESOURCE_TYPES = ['room', 'equipment', 'software'] as const;
+export const RESOURCE_LABELS: Record<string, string> = { room: 'Room', equipment: 'Equipment', software: 'Software' };
 
 export const TYPE_LABELS: Record<string, string> = {
   ticket: 'Ticket',
@@ -36,17 +37,20 @@ export const STATUS_LABELS: Record<string, string> = {
 };
 
 export const STATUS_STYLES: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-800',
-  in_review: 'bg-amber-100 text-amber-800',
-  approved: 'bg-emerald-100 text-emerald-800',
-  in_progress: 'bg-indigo-100 text-indigo-800',
-  blocked: 'bg-red-100 text-red-800',
-  completed: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-  closed: 'bg-zinc-200 text-zinc-700',
+  open: 'bg-blue-100 text-blue-800 dark:bg-blue-400/20 dark:text-blue-200',
+  in_review: 'bg-amber-100 text-amber-800 dark:bg-amber-400/20 dark:text-amber-200',
+  approved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-200',
+  in_progress: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-400/20 dark:text-indigo-200',
+  blocked: 'bg-orange-100 text-orange-800 dark:bg-orange-400/20 dark:text-orange-200',
+  completed: 'bg-green-100 text-green-800 dark:bg-green-400/20 dark:text-green-200',
+  rejected: 'bg-red-100 text-red-800 dark:bg-red-400/20 dark:text-red-200',
+  closed: 'bg-zinc-200 text-zinc-700 dark:bg-zinc-400/20 dark:text-zinc-300',
 };
 
+export const ROLE_NAMES: Record<string, string> = { ta: 'TA', lecturer: 'Lecturer', lab_manager: 'Lab manager', member: 'Member' };
+
 export type PersonRef = { userId: number; firstName: string; lastName: string; email: string };
+export type Assignee = { userId: number; firstName: string; lastName: string; role: string };
 
 export type RequestItem = {
   requestId: number;
@@ -82,7 +86,11 @@ export type RequestDetail = RequestItem & {
   }[];
 };
 
-// ---- form ----
+export type RequestListResponse = { items: RequestItem[]; total: number; page: number; limit: number };
+/** Sent by GET /:id and by the status/assignee updates. allowedStatuses = what this person may pick now. */
+export type RequestDetailResponse = { request: RequestDetail; allowedStatuses: string[] };
+
+// ---- submit form ----
 export type FormValues = {
   type: string;
   title: string;
@@ -113,24 +121,24 @@ export function validateForm(v: FormValues): FormErrors {
   const title = v.title.trim();
   const description = v.description.trim();
 
-  if (!title) e.title = 'Title is required';
-  else if (title.length < LIMITS.titleMin) e.title = `Title must be at least ${LIMITS.titleMin} characters`;
-  else if (title.length > LIMITS.titleMax) e.title = `Title must be at most ${LIMITS.titleMax} characters`;
+  if (!title) e.title = 'Enter a title.';
+  else if (title.length < LIMITS.titleMin) e.title = `Use at least ${LIMITS.titleMin} characters.`;
+  else if (title.length > LIMITS.titleMax) e.title = `Use at most ${LIMITS.titleMax} characters.`;
 
-  if (!description) e.description = 'Description is required';
-  else if (description.length < LIMITS.descMin) e.description = `Description must be at least ${LIMITS.descMin} characters`;
-  else if (description.length > LIMITS.descMax) e.description = `Description must be at most ${LIMITS.descMax} characters`;
+  if (!description) e.description = 'Describe what you need or what went wrong.';
+  else if (description.length < LIMITS.descMin) e.description = `Use at least ${LIMITS.descMin} characters.`;
+  else if (description.length > LIMITS.descMax) e.description = `Use at most ${LIMITS.descMax} characters.`;
 
   if (v.type === 'maintenance' && v.equipmentId.trim() && !isPositiveInt(v.equipmentId.trim())) {
-    e.equipmentId = 'Equipment ID must be a positive whole number';
+    e.equipmentId = 'Use a whole number, e.g. 12.';
   }
 
   if (v.type === 'access_permission') {
-    if (!v.resourceType) e.resourceType = 'Resource type is required';
+    if (!v.resourceType) e.resourceType = 'Choose what you need access to.';
     if (v.resourceId.trim() && !isPositiveInt(v.resourceId.trim())) {
-      e.resourceId = 'Resource ID must be a positive whole number';
+      e.resourceId = 'Use a whole number, e.g. 3.';
     }
-    if (v.expiresAt && new Date(v.expiresAt) <= new Date()) e.expiresAt = 'Expiry date must be in the future';
+    if (v.expiresAt && new Date(v.expiresAt) <= new Date()) e.expiresAt = 'Pick a date in the future.';
   }
   return e;
 }
