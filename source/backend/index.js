@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 
 const { prisma } = require('./lib/prisma');
+const { requireAuth } = require('./middleware/auth');
 
 
 // Import Routes
