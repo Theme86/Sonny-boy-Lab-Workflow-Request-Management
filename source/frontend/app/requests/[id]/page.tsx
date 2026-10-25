@@ -2,6 +2,7 @@
 // Detail view of one submitted request.
 'use client';
 
+import { AppShell } from '@/components/AppShell';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -25,7 +26,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export default function RequestDetailPage() {
+function RequestDetailPageContent() {
   const { id } = useParams<{ id: string }>();
   const { user, loading: authLoading, error: authError } = useRequireAuth();
   const [request, setRequest] = useState<RequestDetail | null>(null);
@@ -49,7 +50,7 @@ export default function RequestDetailPage() {
   if (!user) return null; // redirecting to /login
 
   return (
-    <main className="mx-auto w-full max-w-2xl p-6 sm:p-8">
+    <div className="mx-auto w-full max-w-2xl p-6 sm:p-8">
       <Link href="/requests" className="text-sm text-zinc-500 hover:underline">← Back to requests</Link>
 
       {error || !request ? (
@@ -106,6 +107,15 @@ export default function RequestDetailPage() {
           </ol>
         </>
       )}
-    </main>
+    </div>
+  );
+}
+
+// Wrapped in AppShell so the page gets the top bar, navigation and theme toggle.
+export default function RequestDetailPage() {
+  return (
+    <AppShell>
+      <RequestDetailPageContent />
+    </AppShell>
   );
 }

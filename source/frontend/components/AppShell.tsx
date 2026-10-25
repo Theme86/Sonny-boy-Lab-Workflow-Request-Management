@@ -1,13 +1,15 @@
 // components/AppShell.tsx
 // Wraps logged-in pages: loads the current user (redirects to /login if not signed in),
-// sends new users to "Create profile", and draws the top bar + side navigation.
+// sends new users to "Create profile", and draws the top bar with the main navigation
+// (Home, Requests, Consumables, Equipment), the light/dark toggle and the account menu.
 'use client';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Avatar } from '@/components/Avatar';
-import { GroupIcon, PersonIcon, VaseMark } from '@/components/icons';
+import { FlaskIcon, GroupIcon, HomeIcon, MicroscopeIcon, RequestIcon, VaseMark } from '@/components/icons';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { CurrentUserProvider, useCurrentUser } from '@/hooks/useCurrentUser';
 import { apiFetch } from '@/lib/api';
 import { fontStyle, fontVariables } from '@/lib/fonts';
@@ -21,14 +23,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <CurrentUserProvider>
       <div className={`flex min-h-screen flex-1 flex-col ${ui.page} ${fontVariables}`} style={fontStyle}>
         <TopBar />
-        <div className="flex w-full flex-1">
-          <SideNav />
-          <main className="min-w-0 flex-1 px-4 pt-5 pb-16 sm:px-6 lg:pr-8 lg:pl-2">
-            <div className="mx-auto w-full max-w-[1680px]">
-              <ShellContent>{children}</ShellContent>
-            </div>
-          </main>
-        </div>
+        <main className="w-full min-w-0 flex-1 px-4 pt-5 pb-16 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-[1680px]">
+            <ShellContent>{children}</ShellContent>
+          </div>
+        </main>
       </div>
     </CurrentUserProvider>
   );
@@ -73,49 +72,21 @@ function ShellContent({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+export const NAV_ITEMS = [
+  { href: '/dashboard', label: 'Home', icon: HomeIcon },
+  { href: '/requests', label: 'Requests', icon: RequestIcon },
+  { href: '/consumables', label: 'Consumables', icon: FlaskIcon },
+  { href: '/equipment', label: 'Equipment', icon: MicroscopeIcon },
+];
+
 function useNavItems() {
   const { user } = useCurrentUser();
   if (!user?.profileCompletedAt) return []; // no navigation until the profile is created
-  return [
-    { href: '/profile', label: 'Personal info', icon: PersonIcon },
-    ...(user.role === 'lab_manager' ? [{ href: '/users', label: 'Users', icon: GroupIcon }] : []),
-  ];
+  return NAV_ITEMS;
 }
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function SideNav() {
-  const items = useNavItems();
-  const pathname = usePathname();
-  if (items.length === 0) return null;
-
-  return (
-    <nav aria-label="Main" className="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 px-3 pt-3 lg:block">
-      <ul className="space-y-0.5">
-        {items.map(({ href, label, icon: Icon }) => {
-          const active = isActive(pathname, href);
-          return (
-            <li key={href}>
-              <Link
-                href={href}
-                aria-current={active ? 'page' : undefined}
-                className={`flex h-11 items-center gap-4 rounded-full px-4 text-sm font-medium ${ui.focus} ${
-                  active
-                    ? 'bg-[#d3e3fd] text-[#041e49] dark:bg-[#004a77] dark:text-[#c2e7ff]'
-                    : `${ui.hover} text-[#1f1f1f] dark:text-[#e3e3e3]`
-                }`}
-              >
-                <Icon className={active ? '' : 'text-[#5f6368] dark:text-[#9aa0a6]'} />
-                {label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
 }
 
 function TopBar() {
@@ -124,31 +95,63 @@ function TopBar() {
   const pathname = usePathname();
 
   return (
-    <header className={`sticky top-0 z-20 border-b lg:border-b-0 ${ui.surface} ${ui.border}`}>
-      <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:pr-8">
-        <Link href="/profile" className={`flex items-center gap-2 rounded ${ui.focus}`}>
+    <header className={`sticky top-0 z-20 border-b ${ui.surface} ${ui.border}`}>
+      <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <Link href="/dashboard" className={`flex shrink-0 items-center gap-2 rounded ${ui.focus}`}>
           <VaseMark width={26} height={26} className="text-[#1558b0] dark:text-[#a8c7fa]" />
           <span className="text-[22px] leading-none text-[#444746] dark:text-[#e3e3e3]">Vase Lab</span>
         </Link>
-        <div className="ml-auto">{user && <ProfileMenu />}</div>
+
+        {/* medium screens and up: navigation buttons in the bar */}
+        {items.length > 0 && (
+          <nav aria-label="Main" className="ml-4 hidden md:block lg:ml-8">
+            <ul className="flex items-center gap-1">
+              {items.map(({ href, label, icon: Icon }) => {
+                const active = isActive(pathname, href);
+                return (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors ${ui.focus} ${
+                        active
+                          ? 'bg-[#d3e3fd] text-[#041e49] dark:bg-[#004a77] dark:text-[#c2e7ff]'
+                          : `${ui.hover} text-[#444746] dark:text-[#c4c7c5]`
+                      }`}
+                    >
+                      <Icon className={active ? '' : 'text-[#5f6368] dark:text-[#9aa0a6]'} />
+                      {label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        )}
+
+        <div className="ml-auto flex items-center gap-3">
+          <ThemeToggle />
+          {user && <ProfileMenu />}
+        </div>
       </div>
 
-      {/* small screens: navigation as tabs */}
-      {items.length > 1 && (
-        <nav aria-label="Main" className="flex gap-1 px-2 lg:hidden">
-          {items.map(({ href, label }) => {
+      {/* small screens: navigation as a scrollable row of tabs under the bar */}
+      {items.length > 0 && (
+        <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-2 md:hidden">
+          {items.map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link
                 key={href}
                 href={href}
                 aria-current={active ? 'page' : undefined}
-                className={`border-b-[3px] px-4 py-3 text-sm font-medium whitespace-nowrap ${ui.focus} ${
+                className={`flex items-center gap-2 border-b-[3px] px-3 py-3 text-sm font-medium whitespace-nowrap ${ui.focus} ${
                   active
                     ? 'border-[#1558b0] text-[#1558b0] dark:border-[#a8c7fa] dark:text-[#a8c7fa]'
                     : `border-transparent ${ui.muted}`
                 }`}
               >
+                <Icon width={18} height={18} />
                 {label}
               </Link>
             );

@@ -6,7 +6,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 
 const { prisma } = require('./lib/prisma');
-const { requireAuth } = require('./middleware/auth');
+
 
 
 // Import Routes
@@ -16,6 +16,7 @@ const requestRoutes = require('./routes/requestRoutes');
 const consumableRoutes = require('./routes/consumableRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 const notificationRouter = require("./routes/notificationRoutes");
+const { requireAuth } = require('./middleware/auth');
 
 
 const app = express();
@@ -34,6 +35,7 @@ app.use(cookieParser());
 app.use('/api/users', userRoutes);
 app.use('/auth', authRoutes);
 app.use('/userImages', express.static(path.join(__dirname, 'public', 'userImages')));
+app.use('/equipmentImages', express.static(path.join(__dirname, 'public', 'equipmentImages')));
 app.use('/api/consumables', consumableRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/requests', requestRoutes);
