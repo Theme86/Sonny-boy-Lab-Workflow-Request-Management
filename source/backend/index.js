@@ -8,6 +8,7 @@ const path = require('path');
 const { prisma } = require('./lib/prisma');
 
 
+
 // Import Routes
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');

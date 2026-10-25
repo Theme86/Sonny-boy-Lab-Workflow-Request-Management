@@ -17,6 +17,9 @@ router.get('/', requireAuth,  async (req, res) => {
             currentStock: true,
             reorderThreshold: true,
             expiryDate: true,
+            description: true,
+            phValue: true,
+            imageUrl: true,
         },
         orderBy: {name: 'asc'}
     }
@@ -26,6 +29,7 @@ router.get('/', requireAuth,  async (req, res) => {
     ...c,
     currentStock: Number(c.currentStock),
     reorderThreshold: Number(c.reorderThreshold),
+    phValue: c.phValue == null? null : Number(c.phValue),
   }))
 );
 })
