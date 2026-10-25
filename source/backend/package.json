@@ -24,6 +24,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "google-auth-library": "^11.0.2",
+    "install": "^0.13.0",
     "jsonwebtoken": "^9.0.3",
     "mariadb": "3.5.4",
     "morgan": "^1.12.0",

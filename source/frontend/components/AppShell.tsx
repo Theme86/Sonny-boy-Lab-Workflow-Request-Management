@@ -1,14 +1,23 @@
 // components/AppShell.tsx
 // Wraps logged-in pages: loads the current user (redirects to /login if not signed in),
 // sends new users to "Create profile", and draws the top bar with the main navigation
-// (Home, Requests, Consumables, Equipment), the light/dark toggle and the account menu.
+// (Home, Requests ▾ [Requests, Lab sessions], Items ▾ [Equipment, Consumables]),
+// the light/dark toggle and the account menu.
 'use client';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { Avatar } from '@/components/Avatar';
-import { FlaskIcon, GroupIcon, HomeIcon, MicroscopeIcon, RequestIcon, VaseMark } from '@/components/icons';
+import {
+  ChevronRightIcon,
+  FlaskIcon,
+  GroupIcon,
+  HomeIcon,
+  MicroscopeIcon,
+  RequestIcon,
+  VaseMark,
+} from '@/components/icons';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { CurrentUserProvider, useCurrentUser } from '@/hooks/useCurrentUser';
 import { apiFetch } from '@/lib/api';
@@ -17,6 +26,19 @@ import { ui } from '@/lib/ui';
 import { fullName, ROLE_LABELS } from '@/lib/users';
 
 const SETUP_PATH = '/profile/setup';
+
+type IconType = ComponentType<{ width?: number; height?: number; className?: string }>;
+type NavLink = { href: string; label: string; icon: IconType };
+type NavGroup = { key: string; label: string; icon: IconType; links: NavLink[] };
+
+// Not in your icon set yet, so it lives here. Move it to components/icons if you prefer.
+function CalendarIcon({ width = 24, height = 24, className }: { width?: number; height?: number; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width={width} height={height} fill="currentColor" aria-hidden className={className}>
+      <path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z" />
+    </svg>
+  );
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -72,12 +94,25 @@ function ShellContent({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export const NAV_ITEMS = [
+// Flat list: still used by the dashboard cards (add a '/sessions' line to its DESCRIPTIONS).
+export const NAV_ITEMS: NavLink[] = [
   { href: '/dashboard', label: 'Home', icon: HomeIcon },
   { href: '/requests', label: 'Requests', icon: RequestIcon },
+  { href: '/labsessions', label: 'Lab sessions', icon: CalendarIcon },
   { href: '/consumables', label: 'Consumables', icon: FlaskIcon },
   { href: '/equipment', label: 'Equipment', icon: MicroscopeIcon },
+  { href: '/rooms', label: 'Rooms', icon: RequestIcon },
 ];
+
+const byHref = (href: string) => NAV_ITEMS.find((i) => i.href === href)!;
+
+// Top bar menus. Change a group's `label` to rename its button.
+const NAV_GROUPS: NavGroup[] = [
+  { key: 'requests', label: 'Requests', icon: RequestIcon, links: [byHref('/requests'), byHref('/labsessions')] },
+  { key: 'items', label: 'Items', icon: MicroscopeIcon, links: [byHref('/equipment'), byHref('/consumables'), byHref('/rooms')] },
+];
+
+const GROUPED_HREFS = new Set(NAV_GROUPS.flatMap((g) => g.links.map((l) => l.href)));
 
 function useNavItems() {
   const { user } = useCurrentUser();
@@ -89,10 +124,19 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+const isGroupActive = (pathname: string, group: NavGroup) =>
+  group.links.some((l) => isActive(pathname, l.href));
+
 function TopBar() {
   const { user } = useCurrentUser();
   const items = useNavItems();
   const pathname = usePathname();
+  const [openGroup, setOpenGroup] = useState<string | null>(null); // small screens only
+
+  // anything not inside a group keeps its own button
+  const links = items.filter((i) => !GROUPED_HREFS.has(i.href));
+  const groups = items.length > 0 ? NAV_GROUPS : [];
+  const openLinks = groups.find((g) => g.key === openGroup)?.links ?? [];
 
   return (
     <header className={`sticky top-0 z-20 border-b ${ui.surface} ${ui.border}`}>
@@ -106,7 +150,7 @@ function TopBar() {
         {items.length > 0 && (
           <nav aria-label="Main" className="ml-4 hidden md:block lg:ml-8">
             <ul className="flex items-center gap-1">
-              {items.map(({ href, label, icon: Icon }) => {
+              {links.map(({ href, label, icon: Icon }) => {
                 const active = isActive(pathname, href);
                 return (
                   <li key={href}>
@@ -125,6 +169,11 @@ function TopBar() {
                   </li>
                 );
               })}
+              {groups.map((group) => (
+                <li key={group.key}>
+                  <NavDropdown group={group} pathname={pathname} />
+                </li>
+              ))}
             </ul>
           </nav>
         )}
@@ -137,28 +186,157 @@ function TopBar() {
 
       {/* small screens: navigation as a scrollable row of tabs under the bar */}
       {items.length > 0 && (
-        <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-2 md:hidden">
-          {items.map(({ href, label, icon: Icon }) => {
-            const active = isActive(pathname, href);
+        <>
+          <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-2 md:hidden">
+            {links.map(({ href, label, icon: Icon }) => {
+              const active = isActive(pathname, href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setOpenGroup(null)}
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex items-center gap-2 border-b-[3px] px-3 py-3 text-sm font-medium whitespace-nowrap ${ui.focus} ${
+                    active
+                      ? 'border-[#1558b0] text-[#1558b0] dark:border-[#a8c7fa] dark:text-[#a8c7fa]'
+                      : `border-transparent ${ui.muted}`
+                  }`}
+                >
+                  <Icon width={18} height={18} />
+                  {label}
+                </Link>
+              );
+            })}
+            {groups.map((group) => {
+              const active = isGroupActive(pathname, group);
+              const open = openGroup === group.key;
+              const Icon = group.icon;
+              return (
+                <button
+                  key={group.key}
+                  type="button"
+                  onClick={() => setOpenGroup(open ? null : group.key)}
+                  aria-expanded={open}
+                  className={`flex items-center gap-2 border-b-[3px] px-3 py-3 text-sm font-medium whitespace-nowrap ${ui.focus} ${
+                    active
+                      ? 'border-[#1558b0] text-[#1558b0] dark:border-[#a8c7fa] dark:text-[#a8c7fa]'
+                      : `border-transparent ${ui.muted}`
+                  }`}
+                >
+                  <Icon width={18} height={18} />
+                  {group.label}
+                  <ChevronRightIcon
+                    width={16}
+                    height={16}
+                    className={`transition-transform ${open ? '-rotate-90' : 'rotate-90'}`}
+                  />
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* the choices open as a second row (a dropdown would be clipped by the scrolling tabs) */}
+          {openLinks.length > 0 && (
+            <div className="flex gap-2 px-4 pb-3 md:hidden">
+              {openLinks.map(({ href, label, icon: Icon }) => {
+                const active = isActive(pathname, href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setOpenGroup(null)}
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex h-9 items-center gap-2 rounded-full px-4 text-sm font-medium ${ui.focus} ${
+                      active
+                        ? 'bg-[#d3e3fd] text-[#041e49] dark:bg-[#004a77] dark:text-[#c2e7ff]'
+                        : `${ui.hover} text-[#444746] dark:text-[#c4c7c5]`
+                    }`}
+                  >
+                    <Icon width={18} height={18} />
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </header>
+  );
+}
+
+// A top-bar button with a small menu under it (desktop). Used for each NAV_GROUPS entry.
+function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const active = isGroupActive(pathname, group);
+  const Icon = group.icon;
+
+  useEffect(() => {
+    if (!open) return;
+    function onClick(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors ${ui.focus} ${
+          active
+            ? 'bg-[#d3e3fd] text-[#041e49] dark:bg-[#004a77] dark:text-[#c2e7ff]'
+            : `${ui.hover} text-[#444746] dark:text-[#c4c7c5]`
+        }`}
+      >
+        <Icon className={active ? '' : 'text-[#5f6368] dark:text-[#9aa0a6]'} />
+        {group.label}
+        <ChevronRightIcon
+          width={16}
+          height={16}
+          className={`transition-transform ${open ? '-rotate-90' : 'rotate-90'}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label={group.label}
+          className="absolute left-0 mt-2 w-52 overflow-hidden rounded-2xl bg-white p-1 shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)] dark:bg-[#282a2c]"
+        >
+          {group.links.map(({ href, label, icon: LinkIcon }) => {
+            const current = isActive(pathname, href);
             return (
               <Link
                 key={href}
                 href={href}
-                aria-current={active ? 'page' : undefined}
-                className={`flex items-center gap-2 border-b-[3px] px-3 py-3 text-sm font-medium whitespace-nowrap ${ui.focus} ${
-                  active
-                    ? 'border-[#1558b0] text-[#1558b0] dark:border-[#a8c7fa] dark:text-[#a8c7fa]'
-                    : `border-transparent ${ui.muted}`
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                aria-current={current ? 'page' : undefined}
+                className={`flex h-11 items-center gap-3 rounded-xl px-4 text-sm ${ui.hover} ${ui.focus} ${
+                  current ? 'font-medium text-[#1558b0] dark:text-[#a8c7fa]' : ''
                 }`}
               >
-                <Icon width={18} height={18} />
+                <LinkIcon className="text-[#5f6368] dark:text-[#9aa0a6]" />
                 {label}
               </Link>
             );
           })}
-        </nav>
+        </div>
       )}
-    </header>
+    </div>
   );
 }
 
