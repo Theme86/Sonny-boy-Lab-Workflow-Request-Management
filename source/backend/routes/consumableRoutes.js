@@ -2,6 +2,22 @@ const express = require('express');
 const router = express.Router();
 const { prisma } = require('../lib/prisma');
 const { requireAuth,  requireRole } = require('../middleware/auth');
+const { saveConsumableImage, deleteConsumableImage } = require('../utils/saveConsumableImage');
+
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const rawImage = express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: IMAGE_MAX_BYTES });
+
+function httpError(status, message) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
+function parseId(value) {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id <= 0) throw httpError(400, 'Invalid consumable id');
+  return id;
+}
 
 // GET /api/consumables
 router.get('/', requireAuth,  async (req, res) => {
@@ -67,6 +83,9 @@ router.put('/:id', requireAuth, requireRole('lab_manager', 'lecturer'), async (r
   const { name, unit, currentStock, reorderThreshold, expiryDate, description, phValue, imageUrl } = req.body;
 
   try {
+    const current = imageUrl !== undefined
+      ? await prisma.consumable.findUnique({ where: { consumableId }, select: { imageUrl: true } })
+      : null;
     const consumable = await prisma.consumable.update({
       where: { consumableId },
       data: {
@@ -80,6 +99,7 @@ router.put('/:id', requireAuth, requireRole('lab_manager', 'lecturer'), async (r
         ...(imageUrl !== undefined && { imageUrl }),
       },
     });
+    if (current && current.imageUrl !== imageUrl) deleteConsumableImage(consumableId);
 
     res.json(consumable);
   } catch (err) {
@@ -99,7 +119,44 @@ router.delete('/:id', requireAuth, requireRole('lab_manager', 'lecturer'), async
 
   try {
     await prisma.consumable.delete({ where: { consumableId } });
+    deleteConsumableImage(consumableId);
     res.status(204).send();
+  } catch (err) {
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: 'Consumable not found' });
+    }
+    throw err;
+  }
+});
+
+// PUT /api/consumables/:id/image   body = the image file itself
+router.put('/:id/image', requireAuth, requireRole('lab_manager', 'lecturer'), rawImage, async (req, res) => {
+  const consumableId = parseId(req.params.id);
+  if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+    throw httpError(400, 'Send the image file as the request body with Content-Type image/jpeg, image/png or image/webp');
+  }
+
+  const exists = await prisma.consumable.findUnique({ where: { consumableId }, select: { consumableId: true } });
+  if (!exists) throw httpError(404, 'Consumable not found');
+
+  const imageUrl = saveConsumableImage(consumableId, req.body);
+  const updated = await prisma.consumable.update({
+    where: { consumableId },
+    data: { imageUrl },
+  });
+  res.json(updated);
+});
+
+// DELETE /api/consumables/:id/image   removes the photo
+router.delete('/:id/image', requireAuth, requireRole('lab_manager', 'lecturer'), async (req, res) => {
+  const consumableId = parseId(req.params.id);
+  try {
+    const updated = await prisma.consumable.update({
+      where: { consumableId },
+      data: { imageUrl: null },
+    });
+    deleteConsumableImage(consumableId);
+    res.json(updated);
   } catch (err) {
     if (err.code === 'P2025') {
       return res.status(404).json({ error: 'Consumable not found' });

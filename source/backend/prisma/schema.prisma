@@ -157,6 +157,7 @@ model LabSession {
   description    String?       @db.VarChar(250)
   projectId      Int?          @map("project_id")
   roomId         Int           @map("room_id")
+  bookingGroupId String?       @map("booking_group_id") @db.VarChar(36)
   status         SessionStatus @default(pending_approval)
   archived       Boolean       @default(false)
   requestedBy    Int           @map("requested_by")
@@ -182,6 +183,7 @@ model LabSession {
   @@index([requestedBy])
   @@index([approvedBy])
   @@index([roomId, requestedStart, requestedEnd])
+  @@index([bookingGroupId])
   @@map("lab_sessions")
 }
 

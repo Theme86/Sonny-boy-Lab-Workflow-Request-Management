@@ -70,6 +70,23 @@ type SavePayload = {
 
 const EXPIRY_SOON_DAYS = 30;
 const DAY_MS = 86_400_000;
+const PHOTO_MAX_MB = 5;
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+function validatePhoto(file: File): string | null {
+  if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) return 'Choose a JPG, PNG or WEBP image.';
+  if (file.size > PHOTO_MAX_MB * 1024 * 1024) return `Choose an image of ${PHOTO_MAX_MB} MB or less.`;
+  return null;
+}
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 function toLocalDate(iso: string) {
   return new Date(`${iso.slice(0, 10)}T00:00:00`);
@@ -276,8 +293,20 @@ function HazardPills({ hazards, max = 3 }: { hazards: Hazard[]; max?: number }) 
   );
 }
 
-function Thumb({ src, alt, size = 'sm', onClick }: { src: string | null; alt: string; size?: 'sm' | 'lg'; onClick?: () => void }) {
-  const resolved = resolveImageUrl(src);
+function Thumb({
+  src,
+  alt,
+  size = 'sm',
+  onClick,
+  previewSrc,
+}: {
+  src: string | null;
+  alt: string;
+  size?: 'sm' | 'lg';
+  onClick?: () => void;
+  previewSrc?: string | null;
+}) {
+  const resolved = previewSrc ?? resolveImageUrl(src);
   const [brokenSrc, setBrokenSrc] = useState<string | null>(null);
   const box = size === 'lg' ? 'h-28 w-28 rounded-xl' : 'h-11 w-11 rounded-lg';
 
@@ -406,7 +435,7 @@ type FormState = {
   expiryDate: string;
   imageUrl: string;
 };
-type FormErrors = Partial<Record<keyof FormState, string>>;
+type FormErrors = Partial<Record<keyof FormState, string>> & { photo?: string };
 
 function toForm(c?: Consumable): FormState {
   return {
@@ -491,10 +520,14 @@ function ConsumableFormModal({
 }: {
   initial?: Consumable;
   onClose: () => void;
-  onSave: (data: SavePayload) => Promise<void>;
+  onSave: (data: SavePayload, photoFile: File | null, removePhoto: boolean) => Promise<void>;
 }) {
   const isEdit = Boolean(initial);
   const [form, setForm] = useState<FormState>(() => toForm(initial));
+  const photoInput = useRef<HTMLInputElement>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -511,7 +544,7 @@ function ConsumableFormModal({
     e.preventDefault();
     const errs = validate(form);
     setErrors(errs);
-    if (Object.values(errs).some(Boolean)) return;
+    if (Object.values(errs).some(Boolean) || errors.photo) return;
 
     setSaving(true);
     setSaveError(null);
@@ -524,13 +557,37 @@ function ConsumableFormModal({
         reorderThreshold: Number(form.reorderThreshold),
         phValue: form.phValue === '' ? null : Number(form.phValue),
         expiryDate: form.expiryDate || null,
-        imageUrl: form.imageUrl.trim() || null,
-      });
+        imageUrl: photoFile ? null : form.imageUrl.trim() || null,
+      }, photoFile, removePhoto);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Something went wrong');
       setSaving(false);
     }
   }
+
+  function pickPhoto(file: File | undefined) {
+    if (!file) return;
+    const error = validatePhoto(file);
+    setErrors((current) => ({ ...current, photo: error ?? undefined }));
+    if (error) return;
+    setPhotoFile(file);
+    setRemovePhoto(false);
+    setForm((current) => ({ ...current, imageUrl: '' }));
+    readAsDataUrl(file)
+      .then(setPhotoPreview)
+      .catch(() => setErrors((current) => ({ ...current, photo: 'The image preview could not be loaded.' })));
+  }
+
+  function keepCurrentPhoto() {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setRemovePhoto(false);
+    setForm((current) => ({ ...current, imageUrl: initial?.imageUrl ?? '' }));
+    setErrors((current) => ({ ...current, photo: undefined }));
+  }
+
+  const hasSavedPhoto = Boolean(initial?.imageUrl && !removePhoto);
+  const hasAnyPhoto = Boolean(photoFile || hasSavedPhoto);
 
   return (
     <Modal
@@ -561,17 +618,64 @@ function ConsumableFormModal({
           <div>
             <span className={labelCls}>Image</span>
             <div className="mt-1.5">
-              <Thumb src={form.imageUrl.trim() || null} alt={form.name || 'Preview'} size="lg" />
+              <Thumb
+                src={removePhoto ? null : form.imageUrl.trim() || null}
+                previewSrc={photoPreview}
+                alt={form.name || 'Preview'}
+                size="lg"
+              />
             </div>
-            <div className="relative mt-2">
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" className={btn.secondary} onClick={() => photoInput.current?.click()}>
+                {hasAnyPhoto ? 'Change image' : 'Add image'}
+              </button>
+              {photoFile ? (
+                <button type="button" className={ui.btnText} onClick={keepCurrentPhoto}>
+                  {isEdit && initial?.imageUrl ? 'Keep current image' : 'Remove'}
+                </button>
+              ) : hasSavedPhoto ? (
+                <button
+                  type="button"
+                  className={ui.btnDanger}
+                  onClick={() => {
+                    setRemovePhoto(true);
+                    setForm((current) => ({ ...current, imageUrl: '' }));
+                  }}
+                >
+                  Remove image
+                </button>
+              ) : removePhoto ? (
+                <button type="button" className={ui.btnText} onClick={keepCurrentPhoto}>
+                  Keep current image
+                </button>
+              ) : null}
+            </div>
+            <p className={`mt-1.5 text-xs ${ui.muted}`}>
+              {removePhoto ? 'The image will be removed when you save.' : `JPG, PNG or WEBP, up to ${PHOTO_MAX_MB} MB`}
+            </p>
+            {errors.photo && <p className={`mt-1 text-xs ${ui.errorText}`}>{errors.photo}</p>}
+            <input
+              ref={photoInput}
+              type="file"
+              accept={ACCEPTED_IMAGE_TYPES.join(',')}
+              className="hidden"
+              onChange={(e) => {
+                pickPhoto(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+            <div className="relative mt-3">
               <span className={`pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 ${ui.muted}`}>
                 <Icon name="link" className="h-3.5 w-3.5" />
               </span>
               <input
                 type="url"
-                placeholder="Paste image URL"
+                placeholder="Or paste image URL"
                 value={form.imageUrl}
-                onChange={(e) => set('imageUrl', e.target.value)}
+                onChange={(e) => {
+                  set('imageUrl', e.target.value);
+                  setRemovePhoto(false);
+                }}
                 className={`${inputClass(Boolean(errors.imageUrl))} !py-1.5 !pl-8 !text-xs`}
               />
             </div>
@@ -997,15 +1101,32 @@ export default function ConsumablesPage() {
   }
 
   // Throws on failure so the form can show the backend's message.
-  async function handleSave(data: SavePayload) {
+  async function handleSave(data: SavePayload, photoFile: File | null, removePhoto: boolean) {
     const editing = formTarget?.item;
+    let saved: Consumable;
     if (editing) {
-      await apiFetch(`/api/consumables/${editing.consumableId}`, { method: 'PUT', json: data });
-      showToast(`Saved changes to ${data.name}`);
+      saved = await apiFetch<Consumable>(`/api/consumables/${editing.consumableId}`, { method: 'PUT', json: data });
     } else {
-      await apiFetch('/api/consumables', { method: 'POST', json: data });
-      showToast(`${data.name} added`);
+      saved = await apiFetch<Consumable>('/api/consumables', { method: 'POST', json: data });
     }
+
+    let notice = editing ? `Saved changes to ${data.name}` : `${data.name} added`;
+    try {
+      if (photoFile) {
+        await apiFetch<Consumable>(`/api/consumables/${saved.consumableId}/image`, {
+          method: 'PUT',
+          headers: { 'Content-Type': photoFile.type },
+          body: photoFile,
+        });
+      } else if (removePhoto && !data.imageUrl && editing?.imageUrl) {
+        await apiFetch<Consumable>(`/api/consumables/${saved.consumableId}/image`, { method: 'DELETE' });
+      }
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'unknown error';
+      notice = `${notice}, but the image could not be updated (${reason}). Open Edit to try again.`;
+    }
+
+    showToast(notice);
     setFormTarget(null);
     reload();
   }

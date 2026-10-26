@@ -223,7 +223,7 @@ function Reserve() {
           })),
         },
       });
-      router.push('/sessions');
+      router.push('/labsessions');
     } catch (err) {
       // e.g. 409 "Room is already booked for that time (session #12)"
       setError((err as Error).message);

@@ -16,6 +16,8 @@ const requestRoutes = require('./routes/requestRoutes');
 const consumableRoutes = require('./routes/consumableRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 const notificationRouter = require("./routes/notificationRoutes");
+const labRoomRouter = require("./routes/labRoomRouter");
+const labSessionRouter = require('./routes/labSessionRoutes');
 const { requireAuth } = require('./middleware/auth');
 
 
@@ -36,10 +38,13 @@ app.use('/api/users', userRoutes);
 app.use('/auth', authRoutes);
 app.use('/userImages', express.static(path.join(__dirname, 'public', 'userImages')));
 app.use('/equipmentImages', express.static(path.join(__dirname, 'public', 'equipmentImages')));
+app.use('/consumableImages', express.static(path.join(__dirname, 'public', 'consumableImages')));
 app.use('/api/consumables', consumableRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/requests', requestRoutes);
 app.use("/api/notifications", requireAuth, notificationRouter);
+app.use("/api/lab-rooms", requireAuth, labRoomRouter);
+app.use('/api/lab-sessions', requireAuth, labSessionRouter);
 
 
 // Simple Health Check Route
