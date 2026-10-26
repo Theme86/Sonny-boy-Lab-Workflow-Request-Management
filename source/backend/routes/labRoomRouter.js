@@ -1,10 +1,16 @@
-const { Router } = require("express");
+const express = require("express");
+const router = express.Router();
 const { z } = require("zod");
 const { prisma } = require("../lib/prisma");
 const { requireRole } = require("../middleware/auth");
 const { asyncHandler, HttpError, parseId } = require("../middleware/helpers");
+const { saveLabRoomImage, deleteLabRoomImage } = require("../utils/saveLabRoomImage");
 
-const router = Router();
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const rawImage = express.raw({
+  type: ["image/jpeg", "image/png", "image/webp"],
+  limit: IMAGE_MAX_BYTES,
+});
 
 // statuses that hold a room (same list the session routes use for the overlap check)
 const BLOCKING = ["approved", "scheduled", "in_progress"];
@@ -119,8 +125,38 @@ router.delete(
   "/:id",
   requireRole("lab_manager"),
   asyncHandler(async (req, res) => {
-    await prisma.labRoom.delete({ where: { roomId: parseId(req.params.id) } });
+    const roomId = parseId(req.params.id);
+    await prisma.labRoom.delete({ where: { roomId } });
+    deleteLabRoomImage(roomId);
     res.status(204).end();
+  })
+);
+
+router.put(
+  "/:id/image",
+  requireRole("lab_manager"),
+  rawImage,
+  asyncHandler(async (req, res) => {
+    const roomId = parseId(req.params.id);
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      throw new HttpError(400, "Send the image file as the request body with Content-Type image/jpeg, image/png or image/webp");
+    }
+
+    await prisma.labRoom.findUniqueOrThrow({ where: { roomId }, select: { roomId: true } });
+    const imageUrl = saveLabRoomImage(roomId, req.body);
+    const room = await prisma.labRoom.update({ where: { roomId }, data: { imageUrl } });
+    res.json(room);
+  })
+);
+
+router.delete(
+  "/:id/image",
+  requireRole("lab_manager"),
+  asyncHandler(async (req, res) => {
+    const roomId = parseId(req.params.id);
+    const room = await prisma.labRoom.update({ where: { roomId }, data: { imageUrl: null } });
+    deleteLabRoomImage(roomId);
+    res.json(room);
   })
 );
 

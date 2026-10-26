@@ -9,7 +9,7 @@ import { AppShell } from '@/components/AppShell';
 import { ChevronRightIcon } from '@/components/icons';
 import { PageHeading } from '@/components/ProfileView';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, imageUrl as resolveImageUrl } from '@/lib/api';
 import { floorLabel, floorOf, groupByFloor, type Room } from '@/lib/rooms';
 import { ui } from '@/lib/ui';
 
@@ -154,10 +154,22 @@ function Rooms() {
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                                 }`}
                               >
-                                <span className="text-sm font-medium">{room.name}</span>
-                                <span className={`text-xs ${active ? 'opacity-80' : ui.muted}`}>
-                                  {room.location ?? 'No location'}
-                                  {room.capacity ? ` · ${room.capacity} seats` : ''}
+                                <span className="flex items-center gap-3">
+                                  <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-md bg-gray-200 dark:bg-gray-700">
+                                    {room.imageUrl ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={resolveImageUrl(room.imageUrl) ?? undefined} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                      <span className={`text-xs ${ui.muted}`}>—</span>
+                                    )}
+                                  </span>
+                                  <span className="min-w-0">
+                                    <span className="block text-sm font-medium">{room.name}</span>
+                                    <span className={`block text-xs ${active ? 'opacity-80' : ui.muted}`}>
+                                      {room.location ?? 'No location'}
+                                      {room.capacity ? ` · ${room.capacity} seats` : ''}
+                                    </span>
+                                  </span>
                                 </span>
                               </button>
                             </li>
@@ -177,6 +189,18 @@ function Rooms() {
               <p className={ui.muted}>Select a room to see its details.</p>
             ) : (
               <>
+                <div className="mb-5 grid max-h-80 min-h-40 place-items-center overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
+                  {selected.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={resolveImageUrl(selected.imageUrl) ?? undefined}
+                      alt={`Room ${selected.name}`}
+                      className="max-h-80 w-full object-cover"
+                    />
+                  ) : (
+                    <span className={`text-sm ${ui.muted}`}>No room picture</span>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className={`text-sm ${ui.muted}`}>{floorLabel(floorOf(selected.name))}</p>

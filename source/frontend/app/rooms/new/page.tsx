@@ -8,6 +8,7 @@ import { PageHeading } from '@/components/ProfileView';
 import RoomForm, { type RoomInput } from '@/components/RoomForm';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { apiFetch } from '@/lib/api';
+import type { Room } from '@/lib/rooms';
 import { ui } from '@/lib/ui';
 
 export default function NewRoomPage() {
@@ -34,15 +35,22 @@ function NewRoom() {
     );
   }
 
-  async function createRoom(data: RoomInput) {
-    await apiFetch('/api/lab-rooms', { method: 'POST', json: data });
+  async function saveRoom(data: RoomInput, roomId?: number) {
+    const room = await apiFetch<Room>(roomId ? `/api/lab-rooms/${roomId}` : '/api/lab-rooms', {
+      method: roomId ? 'PATCH' : 'POST',
+      json: data,
+    });
+    return room;
+  }
+
+  function complete() {
     router.push('/rooms');
   }
 
   return (
     <div>
       <PageHeading title="New room" subtitle="Add a lab room to the list." />
-      <RoomForm submitLabel="Create room" onSubmit={createRoom} />
+      <RoomForm submitLabel="Create room" onSubmit={saveRoom} onComplete={complete} />
     </div>
   );
 }

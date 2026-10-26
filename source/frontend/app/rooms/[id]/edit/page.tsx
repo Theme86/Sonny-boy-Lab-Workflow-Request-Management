@@ -49,14 +49,17 @@ function EditRoom() {
   if (!room) return <p className={ui.muted}>Loading...</p>;
 
   async function updateRoom(data: RoomInput) {
-    await apiFetch(`/api/lab-rooms/${id}`, { method: 'PATCH', json: data });
+    return apiFetch<Room>(`/api/lab-rooms/${id}`, { method: 'PATCH', json: data });
+  }
+
+  function complete() {
     router.push('/rooms');
   }
 
   return (
     <div>
       <PageHeading title={`Edit room ${room.name}`} subtitle="Change the room's details." />
-      <RoomForm initial={room} submitLabel="Save changes" onSubmit={updateRoom} />
+      <RoomForm initial={room} submitLabel="Save changes" onSubmit={updateRoom} onComplete={complete} />
     </div>
   );
 }

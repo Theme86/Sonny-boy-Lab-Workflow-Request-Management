@@ -10,6 +10,7 @@ export type Room = {
   name: string;
   capacity: number | null;
   location: string | null;
+  imageUrl: string | null;
 };
 
 /** Floor number from the room code, or null if the name doesn't start with a 3+ digit code. */

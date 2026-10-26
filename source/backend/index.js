@@ -39,6 +39,7 @@ app.use('/auth', authRoutes);
 app.use('/userImages', express.static(path.join(__dirname, 'public', 'userImages')));
 app.use('/equipmentImages', express.static(path.join(__dirname, 'public', 'equipmentImages')));
 app.use('/consumableImages', express.static(path.join(__dirname, 'public', 'consumableImages')));
+app.use('/labRoomImages', express.static(path.join(__dirname, 'public', 'labRoomImages')));
 app.use('/api/consumables', consumableRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/requests', requestRoutes);
