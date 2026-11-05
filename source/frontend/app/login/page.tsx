@@ -14,11 +14,12 @@ import { buttonWidth, loadGoogleScript, renderGoogleButton } from '@/lib/googleS
 import { useTheme } from '@/lib/theme';
 import { ui } from '@/lib/ui';
 
-// soft square grid behind the page, drawn with two gradients so it needs no image
+// graph paper behind the page: faint 24px lines with a stronger line every 4th, drawn with gradients (no image)
+const line = (alpha: number, direction: 'right' | 'bottom') =>
+  `linear-gradient(to ${direction}, rgb(128 134 139 / ${alpha}) 1px, transparent 1px)`;
 const GRID_STYLE = {
-  backgroundImage:
-    'linear-gradient(to right, rgb(128 134 139 / .14) 1px, transparent 1px), linear-gradient(to bottom, rgb(128 134 139 / .14) 1px, transparent 1px)',
-  backgroundSize: '96px 96px',
+  backgroundImage: [line(0.16, 'right'), line(0.16, 'bottom'), line(0.06, 'right'), line(0.06, 'bottom')].join(', '),
+  backgroundSize: '96px 96px, 96px 96px, 24px 24px, 24px 24px',
   backgroundPosition: 'center top',
 };
 
