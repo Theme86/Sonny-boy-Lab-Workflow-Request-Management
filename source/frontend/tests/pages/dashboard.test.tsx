@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import DashboardPage from '@/app/dashboard/page';
 import type { User } from '@/lib/users';
 import { makeUser } from '../helpers';
-import { makeDashboard } from '../dashboardData';
+import { makeDashboard, noPendingSessions, quietRequests } from '../dashboardData';
 
 vi.mock('@/components/AppShell', () => ({ AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock('@/lib/fonts');
@@ -19,7 +19,6 @@ vi.mock('@/lib/api', async (importOriginal) => ({
   apiFetch: (...a: unknown[]) => apiFetch(...a),
 }));
 
-const noRequests = { unassigned: 0, blocked: 0, assignedToMe: 0, underMaintenance: [] };
 
 beforeEach(() => {
   apiFetch.mockReset();
@@ -34,43 +33,53 @@ describe('Home', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  test('asks for today in the browser\'s own time and shows a loading state first', async () => {
+  test('asks for the lab day in the browser\'s own time and shows a loading state first', async () => {
     render(<DashboardPage />);
     expect(screen.getByRole('status', { name: 'Loading dashboard' })).toBeInTheDocument();
-    await screen.findByLabelText('Next session');
+    await screen.findByLabelText('Upcoming sessions');
 
     const url = new URL(String(apiFetch.mock.calls[0][0]), 'http://x');
     expect(url.pathname).toBe('/api/dashboard');
-    const [from, to] = [url.searchParams.get('from')!, url.searchParams.get('to')!];
-    expect(new Date(from).getHours()).toBe(0);
-    expect(new Date(to).getTime() - new Date(from).getTime()).toBeGreaterThanOrEqual(23 * 3600000);
+    const [from, to] = [new Date(url.searchParams.get('from')!), new Date(url.searchParams.get('to')!)];
+    expect([from.getHours(), to.getHours()]).toEqual([7, 21]);
   });
 
-  test('greets by first name and shows the role', async () => {
+  test('says "Today" with the role, not a greeting', async () => {
     render(<DashboardPage />);
-    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(/Good (morning|afternoon|evening), Ada/);
-    expect(screen.getByText('Lab Member')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Today');
+    expect(screen.getByText(/· Lab Member$/)).toBeInTheDocument();
   });
 
-  test('a member sees their own work and the lab status, but no "Needs attention"', async () => {
+  test('a member sees their own work and the lab, but no staff queues', async () => {
     render(<DashboardPage />);
-    for (const label of ['Next session', 'My requests', 'Unread', 'Rooms today', 'Equipment', 'Consumables']) {
+    for (const label of ['Upcoming sessions', 'My requests', 'Rooms today', 'Unread', 'Stock to check', 'Fully booked equipment']) {
       expect(await screen.findByLabelText(label)).toBeInTheDocument();
     }
-    expect(screen.queryByLabelText('Needs attention')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Requests nobody has picked up')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Waiting for your approval')).not.toBeInTheDocument();
   });
 
+  const sectionOrder = () => screen.getAllByRole('region').map((r) => r.getAttribute('aria-label'));
+
   test.each([
-    ['ta', { requests: noRequests }, ['assigned to you'], ['sessions waiting for approval', 'new members this week']],
-    ['lecturer', { requests: noRequests, pendingSessions: 2 }, ['sessions waiting for approval'], ['new members this week']],
-    ['lab_manager', { requests: noRequests, pendingSessions: 2, newMembers: 3 }, ['sessions waiting for approval', 'new members this week'], []],
-  ] as const)('%s sees exactly the attention items the server sent', async (role, attention, shown, hidden) => {
+    ['ta', { requests: quietRequests() }, 'Requests nobody has picked up', ['Waiting for your approval']],
+    ['lecturer', { requests: quietRequests(), pendingSessions: noPendingSessions() }, 'Waiting for your approval', []],
+    ['lab_manager', { requests: quietRequests(), pendingSessions: noPendingSessions(), newMembers: 3 }, 'Rooms today', []],
+  ] as const)('%s sees its own queue first and nothing it may not act on', async (role, attention, first, hidden) => {
     me = makeUser({ role });
     apiFetch.mockResolvedValue(makeDashboard({ role, attention }));
     render(<DashboardPage />);
-    await screen.findByLabelText('Needs attention');
-    for (const label of shown) expect(screen.getByText(label)).toBeInTheDocument();
-    for (const label of hidden) expect(screen.queryByText(label)).not.toBeInTheDocument();
+    await screen.findByLabelText('Upcoming sessions');
+    expect(sectionOrder()[0]).toBe(first);
+    for (const label of hidden) expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+  });
+
+  test('the lab manager sees how many members joined this week', async () => {
+    me = makeUser({ role: 'lab_manager' });
+    apiFetch.mockResolvedValue(makeDashboard({ role: 'lab_manager', attention: { requests: quietRequests(), pendingSessions: noPendingSessions(), newMembers: 3 } }));
+    render(<DashboardPage />);
+    expect(await screen.findByText(/new members joined this week/)).toHaveTextContent('3 new members joined this week.');
+    expect(screen.getByRole('link', { name: 'Manage users' })).toHaveAttribute('href', '/users');
   });
 
   test('shows the error and loads again when "Try again" is clicked', async () => {
@@ -80,7 +89,7 @@ describe('Home', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
-    expect(await screen.findByLabelText('Next session')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Upcoming sessions')).toBeInTheDocument();
     expect(apiFetch).toHaveBeenCalledTimes(2);
   });
 });

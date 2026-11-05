@@ -1,12 +1,13 @@
-// lib/dashboard.ts — asking the server for the dashboard.
+// lib/dashboard.ts — asking the server for the dashboard, and which window of today it covers.
 import { apiFetch } from '@/lib/api';
 import type { DayWindow, Dashboard } from '@/lib/dashboardTypes';
 
-/** From local midnight to the next local midnight — what "today" means for this browser. */
-export function localDayWindow(now: Date = new Date()): DayWindow {
-  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  return { from, to };
+/** The lab day the room timeline covers, in this browser's time: 07:00 to 21:00 by default. */
+export const LAB_DAY = { startHour: 7, endHour: 21 };
+
+export function labDayWindow(now: Date = new Date(), { startHour, endHour } = LAB_DAY): DayWindow {
+  const at = (hour: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour);
+  return { from: at(startHour), to: at(endHour) };
 }
 
 export function fetchDashboard({ from, to }: DayWindow): Promise<Dashboard> {

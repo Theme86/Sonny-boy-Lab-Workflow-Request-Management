@@ -1,36 +1,24 @@
-// components/dashboard/DashboardHeader.tsx — greeting in the login page's serif, the role and today's date,
-// with the two things people come here to do most on the right.
+// components/dashboard/DashboardHeader.tsx — what today is, who you are here, and the two things people come to do.
 import Link from 'next/link';
-import { RoleBadge } from '@/components/RoleBadge';
-import { formatDay, greeting } from '@/lib/dashboardTime';
-import { monoFamily } from '@/lib/fontStacks';
-import { ui } from '@/lib/ui';
-import type { Role } from '@/lib/users';
+import { formatLongDay } from '@/lib/dashboardTime';
+import { dash } from '@/lib/dashboardUi';
+import { ROLE_LABELS, type Role } from '@/lib/users';
 
-interface DashboardHeaderProps {
-  firstName: string;
-  role: Role;
-  now?: Date;
-}
-
-export function DashboardHeader({ firstName, role, now = new Date() }: DashboardHeaderProps) {
+export function DashboardHeader({ role, now = new Date() }: { role: Role; now?: Date }) {
   return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div>
-        <p className={`flex items-center gap-3 text-xs tracking-[0.12em] uppercase ${ui.muted}`} style={{ fontFamily: monoFamily }}>
-          {formatDay(now.toISOString())}
-          <RoleBadge role={role} />
+        <h1 className={dash.title}>Today</h1>
+        <p className={`mt-0.5 text-sm ${dash.muted}`}>
+          {formatLongDay(now)} · {ROLE_LABELS[role]}
         </p>
-        <h1 className="mt-2 font-serif text-[32px] leading-tight sm:text-[40px]">
-          {greeting(now)}, {firstName || 'there'}
-        </h1>
       </div>
-      <nav aria-label="Quick actions" className="flex flex-wrap gap-2">
-        <Link href="/labsessions/new" className={`${ui.btnOutline} bg-white dark:bg-transparent`}>
-          Book a session
-        </Link>
-        <Link href="/requests/new" className={ui.btnPrimary}>
+      <nav aria-label="Quick actions" className="flex gap-2">
+        <Link href="/requests/new" className={dash.btnSecondary}>
           New request
+        </Link>
+        <Link href="/labsessions/new" className={dash.btnPrimary}>
+          Book a session
         </Link>
       </nav>
     </header>

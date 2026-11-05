@@ -1,5 +1,8 @@
 // lib/dashboardTypes.ts — the shape of GET /api/dashboard (mirrors backend/services/dashboard).
+import type { ConsumableItem, NotificationItem, PendingSession, QueuedRequest, RecentRequest, RoomStatus, UpcomingSession } from '@/lib/dashboardItems';
 import type { Role } from '@/lib/users';
+
+export type * from '@/lib/dashboardItems';
 
 export type RequestStatus = 'open' | 'in_review' | 'approved' | 'in_progress' | 'blocked' | 'completed' | 'rejected' | 'closed';
 
@@ -7,59 +10,22 @@ export interface Limited<T> {
   total: number;
   items: T[];
 }
-export interface ConsumableItem {
-  consumableId: number;
-  name: string;
-  unit: string;
-  currentStock: number;
-  reorderThreshold: number;
-  expiryDate: string | null;
-  daysLeft: number | null;
-  expiry: 'expired' | 'soon' | null;
-  hazards: string[];
-}
-export interface NextSession {
-  labSessionId: number;
-  name: string;
-  status: string;
-  start: string;
-  end: string;
-  room: { roomId: number; name: string };
-}
-export interface NotificationItem {
-  notificationId: number;
-  message: string;
-  notifType: string;
-  createdAt: string;
-  requestId: number | null;
-  labSessionId: number | null;
-}
-export interface BusyInterval {
-  start: string;
-  end: string;
-}
-export interface RoomStatus {
-  roomId: number;
-  name: string;
-  busy: BusyInterval[];
-  inUseNow: boolean;
-}
 export interface Attention {
   requests?: {
-    unassigned: number;
+    unassigned: Limited<QueuedRequest>;
     blocked: number;
     assignedToMe: number;
     underMaintenance: { equipmentId: number; name: string }[];
   };
-  pendingSessions?: number;
+  pendingSessions?: Limited<PendingSession>;
   newMembers?: number;
 }
 export interface Dashboard {
   generatedAt: string;
   role: Role;
   me: {
-    nextSession: NextSession | null;
-    requests: { counts: Record<RequestStatus, number>; active: number };
+    upcomingSessions: UpcomingSession[];
+    requests: { counts: Record<RequestStatus, number>; active: number; recent: RecentRequest[] };
     notifications: { unread: number; latest: NotificationItem[] };
   };
   lab: {

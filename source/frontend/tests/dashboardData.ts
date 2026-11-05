@@ -6,8 +6,8 @@ export function makeDashboard(overrides: Partial<Dashboard> = {}): Dashboard {
     generatedAt: '2026-11-05T12:00:00.000Z',
     role: 'member',
     me: {
-      nextSession: null,
-      requests: { counts: { open: 0, in_review: 0, approved: 0, in_progress: 0, blocked: 0, completed: 0, rejected: 0, closed: 0 }, active: 0 },
+      upcomingSessions: [],
+      requests: { counts: { open: 0, in_review: 0, approved: 0, in_progress: 0, blocked: 0, completed: 0, rejected: 0, closed: 0 }, active: 0, recent: [] },
       notifications: { unread: 0, latest: [] },
     },
     lab: {
@@ -19,3 +19,7 @@ export function makeDashboard(overrides: Partial<Dashboard> = {}): Dashboard {
     ...overrides,
   };
 }
+
+/** Attention for staff with nothing waiting. */
+export const quietRequests = () => ({ unassigned: { total: 0, items: [] }, blocked: 0, assignedToMe: 0, underMaintenance: [] });
+export const noPendingSessions = () => ({ total: 0, items: [] });

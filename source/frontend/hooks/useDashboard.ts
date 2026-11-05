@@ -3,7 +3,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchDashboard, localDayWindow } from '@/lib/dashboard';
+import { fetchDashboard, labDayWindow } from '@/lib/dashboard';
 import type { DayWindow, Dashboard } from '@/lib/dashboardTypes';
 
 type State = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Dashboard; window: DayWindow };
@@ -13,7 +13,7 @@ export function useDashboard(reloadKey = 0): State {
 
   useEffect(() => {
     let cancelled = false;
-    const window = localDayWindow();
+    const window = labDayWindow();
     fetchDashboard(window)
       .then((data) => !cancelled && setState({ status: 'ready', data, window }))
       .catch((err) => !cancelled && setState({ status: 'error', message: err.message ?? 'The dashboard could not be loaded' }));

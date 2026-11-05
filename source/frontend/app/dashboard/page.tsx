@@ -1,5 +1,6 @@
 // app/dashboard/page.tsx — Home inside the app (the public landing page at / links here).
 // One request to /api/dashboard; the server decides what each role gets, so this page just shows what arrives.
+// Layout and tokens: components/dashboard/DashboardView.tsx and lib/dashboardUi.ts.
 'use client';
 
 import { useState } from 'react';
@@ -9,7 +10,6 @@ import { DashboardError, DashboardSkeleton } from '@/components/dashboard/Dashbo
 import { DashboardView } from '@/components/dashboard/DashboardView';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useDashboard } from '@/hooks/useDashboard';
-import { GRID_STYLE } from '@/lib/gridBackground';
 
 export default function DashboardPage() {
   return (
@@ -26,8 +26,8 @@ function Home() {
   if (!user) return null;
 
   return (
-    <div className="-mx-4 -mt-5 -mb-16 min-h-[calc(100dvh-64px)] px-4 pt-6 pb-16 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={GRID_STYLE}>
-      <DashboardHeader firstName={user.firstName} role={user.role} />
+    <div className="mx-auto flex max-w-[1200px] flex-col gap-5">
+      <DashboardHeader role={user.role} />
       {state.status === 'loading' && <DashboardSkeleton />}
       {state.status === 'error' && <DashboardError message={state.message} onRetry={() => setReloadKey((k) => k + 1)} />}
       {state.status === 'ready' && <DashboardView data={state.data} window={state.window} />}
