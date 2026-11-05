@@ -11,18 +11,10 @@ import { LoginIllustration } from '@/components/LoginIllustration';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { apiFetch } from '@/lib/api';
 import { fontStyle, fontVariables } from '@/lib/fonts';
+import { GRID_STYLE } from '@/lib/gridBackground';
 import { buttonWidth, loadGoogleScript, renderGoogleButton } from '@/lib/googleSignIn';
 import { useTheme } from '@/lib/theme';
 import { ui } from '@/lib/ui';
-
-// graph paper behind the page: faint 24px lines with a stronger line every 4th, drawn with gradients (no image)
-const line = (alpha: number, direction: 'right' | 'bottom') =>
-  `linear-gradient(to ${direction}, rgb(128 134 139 / ${alpha}) 1px, transparent 1px)`;
-const GRID_STYLE = {
-  backgroundImage: [line(0.16, 'right'), line(0.16, 'bottom'), line(0.06, 'right'), line(0.06, 'bottom')].join(', '),
-  backgroundSize: '96px 96px, 96px 96px, 24px 24px, 24px 24px',
-  backgroundPosition: 'center top',
-};
 
 export default function LoginPage() {
   const router = useRouter();
