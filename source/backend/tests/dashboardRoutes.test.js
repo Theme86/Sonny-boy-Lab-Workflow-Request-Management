@@ -60,6 +60,8 @@ test('a member gets no attention section and no staff queries run', async () => 
   assert.equal(s.callsTo('user.count').length, 0);
   assert.equal(s.callsTo('labSession.count').length, 0);
   assert.equal(s.callsTo('request.count').length, 0);
+  assert.equal(s.callsTo('labSession.findMany').some((c) => c.args.where.status === 'pending_approval'), false);
+  assert.equal(s.callsTo('request.findMany').some((c) => c.args.where.assignedTo === null), false);
   assert.equal(JSON.stringify(body).includes('pendingSessions'), false);
   await s.close();
 });
@@ -89,7 +91,7 @@ test('response has the expected shape for everyone', async () => {
   const s = await startServer();
   const body = await (await get(s.base, 4)).json();
   assert.deepEqual(Object.keys(body).sort(), ['attention', 'generatedAt', 'lab', 'me', 'role']);
-  assert.deepEqual(Object.keys(body.me).sort(), ['nextSession', 'notifications', 'requests']);
+  assert.deepEqual(Object.keys(body.me).sort(), ['notifications', 'requests', 'upcomingSessions']);
   assert.deepEqual(Object.keys(body.lab).sort(), ['consumables', 'equipment', 'rooms']);
   await s.close();
 });

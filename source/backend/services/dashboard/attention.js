@@ -3,14 +3,31 @@
 // receive the numbers at all, not even hidden.
 const { attentionAccess } = require('./access');
 const { ACTIVE_REQUEST_STATUSES } = require('./helpers');
+const { QUEUE_LENGTH, pendingSessionQueue } = require('./sessionQueue');
 
 const NEW_MEMBER_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const UNASSIGNED = { status: 'open', assignedTo: null };
+
+/** The oldest open requests nobody has picked up (oldest first, like a queue), with the total. */
+async function unassignedQueue(prisma) {
+  const [total, items] = await Promise.all([
+    prisma.request.count({ where: UNASSIGNED }),
+    prisma.request.findMany({
+      where: UNASSIGNED,
+      orderBy: { createdAt: 'asc' },
+      take: QUEUE_LENGTH,
+      select: { requestId: true, title: true, type: true, priority: true, createdAt: true },
+    }),
+  ]);
+  return { total, items };
+}
+
 /** Open requests nobody has picked up, blocked ones, those assigned to me, and equipment under repair. */
 async function requestAttention(prisma, userId) {
   const [unassigned, blocked, assignedToMe, maintenance] = await Promise.all([
-    prisma.request.count({ where: { status: 'open', assignedTo: null } }),
+    unassignedQueue(prisma),
     prisma.request.count({ where: { status: 'blocked' } }),
     prisma.request.count({ where: { assignedTo: userId, status: { in: ACTIVE_REQUEST_STATUSES } } }),
     prisma.request.findMany({
@@ -25,8 +42,6 @@ async function requestAttention(prisma, userId) {
   return { unassigned, blocked, assignedToMe, underMaintenance };
 }
 
-const pendingSessionCount = (prisma) => prisma.labSession.count({ where: { status: 'pending_approval', archived: false } });
-
 /** Accounts created recently that still have the default role. */
 const newMemberCount = (prisma, now) =>
   prisma.user.count({
@@ -40,7 +55,7 @@ async function attention(prisma, user, now) {
 
   const [requests, pendingSessions, newMembers] = await Promise.all([
     access.requests ? requestAttention(prisma, user.userId) : undefined,
-    access.pendingSessions ? pendingSessionCount(prisma) : undefined,
+    access.pendingSessions ? pendingSessionQueue(prisma) : undefined,
     access.newMembers ? newMemberCount(prisma, now) : undefined,
   ]);
 
@@ -51,4 +66,4 @@ async function attention(prisma, user, now) {
   };
 }
 
-module.exports = { NEW_MEMBER_DAYS, requestAttention, pendingSessionCount, newMemberCount, attention };
+module.exports = { NEW_MEMBER_DAYS, unassignedQueue, requestAttention, newMemberCount, attention };
