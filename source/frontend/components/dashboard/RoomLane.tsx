@@ -1,11 +1,10 @@
-// components/dashboard/RoomLane.tsx — pieces of the room timeline: the hour scale and one lane per room.
+// components/dashboard/RoomLane.tsx — one lane per room on the timeline (the hour scale is in HourScale.tsx).
 import { formatRange, percentOfWindow } from '@/lib/dashboardTime';
 import type { DayWindow, RoomStatus } from '@/lib/dashboardTypes';
-import { dash } from '@/lib/dashboardUi';
+import { COLUMNS } from './roomGrid';
 
-// room-name column, and the matching offset for the "now" line (column + gap + padding)
-export const COLUMNS = 'grid-cols-[5.5rem_1fr] sm:grid-cols-[7rem_1fr]';
-export const NOW_OFFSET = 'left-[calc(5.5rem+0.75rem+1rem)] sm:left-[calc(7rem+0.75rem+1rem)]';
+export { HourScale } from './HourScale';
+export { COLUMNS, NOW_OFFSET } from './roomGrid';
 
 /** Faint vertical line at each hour, drawn as a background so it costs no elements. */
 const hourLines = (hours: number) => ({
@@ -34,20 +33,5 @@ export function Lane({ room, window, hours }: { room: RoomStatus; window: DayWin
         })}
       </div>
     </li>
-  );
-}
-
-export function HourScale({ labels }: { labels: number[] }) {
-  return (
-    <div className={`grid ${COLUMNS} gap-3 border-b px-4 pt-2 pb-1 ${dash.rule}`} aria-hidden>
-      <span />
-      <div className={`flex text-xs ${dash.muted} ${dash.num}`}>
-        {labels.map((h, i) => (
-          <span key={h} className="flex-1">
-            {i % 2 === 0 ? String(h).padStart(2, '0') : ''}
-          </span>
-        ))}
-      </div>
-    </div>
   );
 }

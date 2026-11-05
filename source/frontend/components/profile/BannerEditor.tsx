@@ -1,8 +1,10 @@
-// components/profile/BannerEditor.tsx — the banner preview with "Change banner" / "Keep current" / "Use default" buttons.
+// components/profile/BannerEditor.tsx — the banner preview with its buttons, hint and error.
 import { useRef } from 'react';
 import { imageUrl } from '@/lib/api';
 import { ui } from '@/lib/ui';
-import { ACCEPTED_TYPES, BANNER_MAX_MB } from './profileImages';
+import { BannerButtons } from './BannerButtons';
+import { HiddenFileInput } from './HiddenFileInput';
+import { BANNER_MAX_MB } from './profileImages';
 import type { ProfileFormState } from './useProfileForm';
 
 export function BannerEditor({ form }: { form: ProfileFormState }) {
@@ -20,36 +22,12 @@ export function BannerEditor({ form }: { form: ProfileFormState }) {
         role="img"
         aria-label="Banner preview"
       />
-      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <button type="button" className={ui.btnText} onClick={() => input.current?.click()}>
-          Change banner
-        </button>
-        {images.bannerFile ? (
-          <button type="button" className={ui.btnText} onClick={images.keepBanner}>
-            Keep current banner
-          </button>
-        ) : (
-          !images.resetBanner && (
-            <button type="button" className={ui.btnText} onClick={images.useDefaultBanner}>
-              Use default banner
-            </button>
-          )
-        )}
-      </div>
+      <BannerButtons images={images} onChange={() => input.current?.click()} />
       <p className={`mt-1 text-xs ${ui.muted}`}>
         {images.resetBanner ? 'The default banner will be used when you save.' : `Wide image, up to ${BANNER_MAX_MB} MB`}
       </p>
       {errors.banner && <p className={`mt-1 text-xs ${ui.errorText}`}>{errors.banner}</p>}
-      <input
-        ref={input}
-        type="file"
-        accept={ACCEPTED_TYPES.join(',')}
-        className="hidden"
-        onChange={(e) => {
-          images.pickBanner(e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
+      <HiddenFileInput inputRef={input} onPick={images.pickBanner} />
     </div>
   );
 }

@@ -4,29 +4,12 @@ import { ArrowBackIcon } from '@/components/icons';
 import { ui } from '@/lib/ui';
 import type { User } from '@/lib/users';
 import { BannerEditor } from './BannerEditor';
-import { Field, Section } from './Field';
-import { BioField, ErrorBanner, LabFields, NameFields } from './FieldGroups';
+import { EditSections } from './EditSections';
+import { Section } from './Field';
+import { ErrorBanner } from './FieldGroups';
 import { PhotoPicker } from './PhotoPicker';
+import { SaveBar } from './SaveBar';
 import type { ProfileFormState } from './useProfileForm';
-
-function SaveBar({ form }: { form: ProfileFormState }) {
-  const justSaved = form.saved && !form.hasChanges;
-  return (
-    <div className={`sticky bottom-4 z-10 mt-6 flex items-center justify-end gap-2 px-5 py-3 ${ui.card}`}>
-      {justSaved && (
-        <span role="status" className={`mr-auto text-sm ${ui.muted}`}>
-          Changes saved
-        </span>
-      )}
-      <Link href="/profile" className={ui.btnText}>
-        {justSaved ? 'Done' : 'Cancel'}
-      </Link>
-      <button type="submit" className={ui.btnPrimary} disabled={form.saving || !form.hasChanges}>
-        {form.saving ? 'Saving…' : 'Save changes'}
-      </button>
-    </div>
-  );
-}
 
 export function EditLayout({ form, user }: { form: ProfileFormState; user: User }) {
   return (
@@ -47,20 +30,7 @@ export function EditLayout({ form, user }: { form: ProfileFormState; user: User 
         </Section>
 
         <div className="space-y-6">
-          <Section title="Basic info" description="Other people in the lab can see this information.">
-            <div className="space-y-5">
-              <NameFields form={form} />
-              <Field label="Email" hint="Managed by your Google account.">
-                <input value={user.email} disabled className={ui.input} />
-              </Field>
-              <BioField form={form} />
-            </div>
-          </Section>
-
-          <Section title="Contact info and ID" description="Only you and the Lab Manager can see your student / staff ID and phone number.">
-            <LabFields form={form} />
-          </Section>
-
+          <EditSections form={form} user={user} />
           <ErrorBanner message={form.formError} />
         </div>
       </div>

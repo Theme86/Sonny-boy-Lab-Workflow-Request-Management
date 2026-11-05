@@ -1,25 +1,13 @@
 // components/dashboard/DashboardView.tsx — the layout: a status line, then a wide main column of work queues
 // (ordered per role, see sectionOrder.ts) beside a narrow column of notifications and lab stock.
-import Link from 'next/link';
 import type { Dashboard, DayWindow } from '@/lib/dashboardTypes';
-import { dash } from '@/lib/dashboardUi';
 import { EquipmentNote } from './EquipmentNote';
 import { Notifications } from './Notifications';
 import { MAIN_SECTIONS } from './mainRenderers';
+import { NewMembers } from './NewMembers';
 import { mainSections } from './sectionOrder';
 import { StatusLine } from './StatusLine';
 import { StockWatch } from './StockWatch';
-
-function NewMembers({ count }: { count: number }) {
-  return (
-    <p className={`text-sm ${dash.muted}`}>
-      <span className={`font-medium text-inherit ${dash.num}`}>{count}</span> new {count === 1 ? 'member' : 'members'} joined this week.{' '}
-      <Link href="/users" className={dash.link}>
-        Manage users
-      </Link>
-    </p>
-  );
-}
 
 export function DashboardView({ data, window }: { data: Dashboard; window: DayWindow }) {
   const newMembers = data.attention?.newMembers;

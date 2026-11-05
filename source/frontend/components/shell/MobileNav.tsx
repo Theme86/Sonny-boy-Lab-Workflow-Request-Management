@@ -2,10 +2,12 @@
 // A group's choices open as a second row (a dropdown would be clipped by the scrolling tabs).
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import { ChevronRightIcon } from '@/components/icons';
-import { isActive, isGroupActive, pill, tab, type NavGroup, type NavLink } from './navConfig';
+import { isActive, isGroupActive, type NavGroup, type NavLink } from './navConfig';
+import { MobileTabLink } from './MobileTabLink';
+import { MobileSubRow } from './MobileSubRow';
+import { tab } from './navStyles';
 
 type Props = { links: NavLink[]; groups: NavGroup[]; pathname: string };
 
@@ -17,15 +19,9 @@ export function MobileNav({ links, groups, pathname }: Props) {
   return (
     <>
       <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-2 md:hidden">
-        {links.map(({ href, label, icon: Icon }) => {
-          const active = isActive(pathname, href);
-          return (
-            <Link key={href} href={href} onClick={close} aria-current={active ? 'page' : undefined} className={tab(active)}>
-              <Icon width={18} height={18} />
-              {label}
-            </Link>
-          );
-        })}
+        {links.map((link) => (
+          <MobileTabLink key={link.href} link={link} active={isActive(pathname, link.href)} onClick={close} />
+        ))}
         {groups.map((group) => {
           const open = openGroup === group.key;
           const Icon = group.icon;
@@ -45,19 +41,7 @@ export function MobileNav({ links, groups, pathname }: Props) {
         })}
       </nav>
 
-      {openLinks.length > 0 && (
-        <div className="flex gap-2 px-4 pb-3 md:hidden">
-          {openLinks.map(({ href, label, icon: Icon }) => {
-            const active = isActive(pathname, href);
-            return (
-              <Link key={href} href={href} onClick={close} aria-current={active ? 'page' : undefined} className={pill(active, 'h-9')}>
-                <Icon width={18} height={18} />
-                {label}
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      <MobileSubRow links={openLinks} pathname={pathname} onNavigate={close} />
     </>
   );
 }

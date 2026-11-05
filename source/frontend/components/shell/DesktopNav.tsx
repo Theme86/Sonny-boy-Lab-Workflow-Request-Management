@@ -1,6 +1,7 @@
 // components/shell/DesktopNav.tsx — medium screens and up: navigation buttons in the top bar.
 import Link from 'next/link';
-import { isActive, pill, type NavGroup, type NavLink } from './navConfig';
+import { isActive, type NavGroup, type NavLink } from './navConfig';
+import { pill } from './navStyles';
 import { NavDropdown } from './NavDropdown';
 
 type Props = { links: NavLink[]; groups: NavGroup[]; pathname: string };

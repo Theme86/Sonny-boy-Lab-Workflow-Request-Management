@@ -8,7 +8,8 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { DesktopNav } from './DesktopNav';
 import { MobileNav } from './MobileNav';
-import { barFocus, NAV_GROUPS, NAV_ITEMS, ungrouped } from './navConfig';
+import { NAV_GROUPS, NAV_ITEMS, ungrouped } from './navConfig';
+import { barFocus } from './navStyles';
 import { ProfileMenu } from './ProfileMenu';
 
 export function TopBar() {

@@ -2,7 +2,10 @@
 import { StatusBadge } from '@/components/RoleBadge';
 import { ui } from '@/lib/ui';
 import { formatDate, type User } from '@/lib/users';
-import { ActiveButton, NameBlock, RoleSelect, type RowActions } from './UserCells';
+import { ActiveButton } from './ActiveButton';
+import { NameBlock } from './NameBlock';
+import { RoleSelect } from './RoleSelect';
+import type { RowActions } from './rowActions';
 
 export function UserCards({ users, loading, actions }: { users: User[]; loading: boolean; actions: RowActions }) {
   return (

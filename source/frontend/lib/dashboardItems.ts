@@ -1,6 +1,5 @@
-// lib/dashboardItems.ts — the single rows inside GET /api/dashboard (a session, a request, a room…).
-import type { RequestStatus } from '@/lib/dashboardTypes';
-
+// lib/dashboardItems.ts — the single rows inside GET /api/dashboard: consumables, sessions, notifications.
+// Request and room rows are in dashboardRequestItems.ts.
 export interface ConsumableItem {
   consumableId: number;
   name: string;
@@ -28,35 +27,5 @@ export interface NotificationItem {
   requestId: number | null;
   labSessionId: number | null;
 }
-export interface RecentRequest {
-  requestId: number;
-  title: string;
-  type: string;
-  status: RequestStatus;
-  createdAt: string;
-}
-export interface QueuedRequest {
-  requestId: number;
-  title: string;
-  type: string;
-  priority: string | null;
-  createdAt: string;
-}
-export interface PendingSession {
-  labSessionId: number;
-  name: string;
-  start: string;
-  end: string;
-  roomName: string;
-  requestedBy: string;
-}
-export interface BusyInterval {
-  start: string;
-  end: string;
-}
-export interface RoomStatus {
-  roomId: number;
-  name: string;
-  busy: BusyInterval[];
-  inUseNow: boolean;
-}
+
+export type * from '@/lib/dashboardRequestItems';
