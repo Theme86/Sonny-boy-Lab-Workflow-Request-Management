@@ -26,7 +26,7 @@ function Home() {
   if (!user) return null;
 
   return (
-    <div className="-mx-4 -my-6 px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={GRID_STYLE}>
+    <div className="-mx-4 -mt-5 -mb-16 min-h-[calc(100dvh-64px)] px-4 pt-6 pb-16 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={GRID_STYLE}>
       <DashboardHeader firstName={user.firstName} role={user.role} />
       {state.status === 'loading' && <DashboardSkeleton />}
       {state.status === 'error' && <DashboardError message={state.message} onRetry={() => setReloadKey((k) => k + 1)} />}
