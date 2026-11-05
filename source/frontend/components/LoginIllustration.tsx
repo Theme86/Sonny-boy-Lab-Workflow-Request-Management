@@ -2,6 +2,8 @@
 // in an arch, showing a slowly travelling sine wave, with a few measured data points around it.
 // Purely decorative (hidden from screen readers); the wave stands still for people who ask for reduced motion.
 
+import { monoFamily } from '@/lib/fontStacks';
+
 // screen area inside the arch (viewBox units)
 const SCREEN = { left: 27, right: 133, top: 17, bottom: 133 };
 const MID_Y = 78;
@@ -82,7 +84,7 @@ export function LoginIllustration() {
           <path d={TRACE} fill="none" stroke="#5fe0a0" strokeWidth={5} opacity={0.18} strokeLinejoin="round" />
           <path d={TRACE} fill="none" stroke="#7cf0b8" strokeWidth={1.8} strokeLinejoin="round" />
         </g>
-        <text x={33} y={127} fill="#a8c7fa" opacity={0.75} fontSize={7} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
+        <text x={33} y={127} fill="#a8c7fa" opacity={0.75} fontSize={7} fontFamily={monoFamily}>
           CH1 50 Hz
         </text>
       </g>

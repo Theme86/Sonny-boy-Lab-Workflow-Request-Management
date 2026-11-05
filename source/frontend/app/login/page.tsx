@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { VaseMark } from '@/components/icons';
+import { LabInfoFooter } from '@/components/LabInfoFooter';
 import { LoginIllustration } from '@/components/LoginIllustration';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { apiFetch } from '@/lib/api';
@@ -103,6 +104,7 @@ export default function LoginPage() {
         <Link href="/" className={`${ui.btnText} mt-2`}>
           Back to home
         </Link>
+        <LabInfoFooter />
       </main>
     </div>
   );
