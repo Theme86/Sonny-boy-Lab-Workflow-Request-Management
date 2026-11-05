@@ -3,7 +3,8 @@ import { dayLabel, formatRange } from '@/lib/dashboardTime';
 import type { NextSession } from '@/lib/dashboardTypes';
 import { monoFamily } from '@/lib/fontStacks';
 import { ui } from '@/lib/ui';
-import { EmptyNote, Panel } from './Panel';
+import { EmptyState } from './EmptyState';
+import { Panel } from './Panel';
 
 const STATUS_TEXT: Record<string, string> = {
   pending_approval: 'Waiting for approval',
@@ -14,7 +15,7 @@ const STATUS_TEXT: Record<string, string> = {
 
 export function NextSessionPanel({ session, now = new Date() }: { session: NextSession | null; now?: Date }) {
   return (
-    <Panel label="Next session" href="/labsessions">
+    <Panel label="Next session" channel="violet" href="/labsessions">
       {session ? (
         <div>
           <p className="text-xl font-medium">{session.name}</p>
@@ -26,7 +27,7 @@ export function NextSessionPanel({ session, now = new Date() }: { session: NextS
           </p>
         </div>
       ) : (
-        <EmptyNote>No upcoming sessions. Book a room from Lab sessions.</EmptyNote>
+        <EmptyState art="flat" title="Nothing booked" body="No upcoming lab sessions." action={{ href: '/labsessions/new', label: 'Book a session' }} />
       )}
     </Panel>
   );

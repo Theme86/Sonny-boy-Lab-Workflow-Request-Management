@@ -11,7 +11,7 @@ export function AttentionPanel({ attention }: { attention: Attention }) {
   const repairs = attention.requests?.underMaintenance ?? [];
 
   return (
-    <Panel label="Needs attention" className="md:col-span-2 xl:col-span-3">
+    <Panel label="Needs attention" channel="amber">
       <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-5">
         {items.map((item) => (
           <Readout key={item.label} {...item} />

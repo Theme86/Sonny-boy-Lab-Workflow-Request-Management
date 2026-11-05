@@ -2,15 +2,16 @@
 import type { Dashboard } from '@/lib/dashboardTypes';
 import { dayLabel, formatTime } from '@/lib/dashboardTime';
 import { ui } from '@/lib/ui';
-import { EmptyNote, Panel } from './Panel';
+import { EmptyState } from './EmptyState';
+import { Panel } from './Panel';
 
 type NotificationSummary = Dashboard['me']['notifications'];
 
 export function NotificationsPanel({ notifications, now = new Date() }: { notifications: NotificationSummary; now?: Date }) {
   return (
-    <Panel label={notifications.unread > 0 ? `Unread · ${notifications.unread}` : 'Unread'}>
+    <Panel label={notifications.unread > 0 ? `Unread · ${notifications.unread}` : 'Unread'} id="unread">
       {notifications.latest.length === 0 ? (
-        <EmptyNote>You are all caught up.</EmptyNote>
+        <EmptyState art="damped" title="All caught up" body="New updates on your requests and sessions appear here." />
       ) : (
         <ul className="flex flex-col gap-3">
           {notifications.latest.map((n) => (

@@ -15,6 +15,9 @@ export function RoomStrip({ room, window, nowPercent }: { room: RoomStatus; wind
         <span className={`text-xs ${ui.muted}`}>{room.inUseNow ? 'In use now' : 'Free now'}</span>
       </div>
       <div className="relative h-3 rounded-sm bg-[#80868b]/15" role="img" aria-label={`${room.name} bookings today: ${room.busy.map((b) => formatRange(b.start, b.end)).join(', ') || 'none'}`}>
+        {[25, 50, 75].map((tick) => (
+          <span key={tick} className="absolute inset-y-0 w-px bg-[#80868b]/25" style={{ left: `${tick}%` }} aria-hidden />
+        ))}
         {room.busy.map((b) => {
           const left = percentOfWindow(b.start, window);
           return <span key={b.start} className="absolute inset-y-0 rounded-sm bg-[#1558b0] dark:bg-[#a8c7fa]" style={{ left: `${left}%`, width: `${percentOfWindow(b.end, window) - left}%` }} />;

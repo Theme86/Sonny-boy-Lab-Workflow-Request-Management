@@ -4,7 +4,8 @@ import { percentOfWindow } from '@/lib/dashboardTime';
 import type { DayWindow, Dashboard } from '@/lib/dashboardTypes';
 import { monoFamily } from '@/lib/fontStacks';
 import { ui } from '@/lib/ui';
-import { EmptyNote, Panel } from './Panel';
+import { EmptyState } from './EmptyState';
+import { Panel } from './Panel';
 import { RoomStrip } from './RoomStrip';
 
 type RoomSummary = Dashboard['lab']['rooms'];
@@ -14,9 +15,9 @@ export function RoomsTimeline({ rooms, window, now = new Date() }: { rooms: Room
   const nowPercent = percentOfWindow(now.toISOString(), window);
 
   return (
-    <Panel label="Rooms today" href="/rooms" className="md:col-span-2">
+    <Panel label="Rooms today" channel="violet" href="/rooms">
       {rooms.rooms.length === 0 ? (
-        <EmptyNote>No rooms have been added yet.</EmptyNote>
+        <EmptyState art="flat" title="No rooms yet" body="Once rooms are added, today's bookings show here as a timeline." />
       ) : (
         <>
           <ul className="flex flex-col gap-4">

@@ -33,7 +33,8 @@ describe('Readout', () => {
 describe('NextSessionPanel', () => {
   it('says there is nothing planned when there is no session', () => {
     render(<NextSessionPanel session={null} now={NOW} />);
-    expect(screen.getByText(/No upcoming sessions/)).toBeInTheDocument();
+    expect(screen.getByText('Nothing booked')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Book a session' })).toHaveAttribute('href', '/labsessions/new');
   });
 
   it('shows day, time range, room and status', () => {
@@ -48,13 +49,14 @@ describe('NextSessionPanel', () => {
 describe('RequestsPanel', () => {
   it('shows an empty note when there are no requests', () => {
     render(<RequestsPanel requests={base.me.requests} />);
-    expect(screen.getByText(/not made any requests/)).toBeInTheDocument();
+    expect(screen.getByText('No requests yet')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New request' })).toHaveAttribute('href', '/requests/new');
   });
 
   it('shows the open total and only the statuses that have requests', () => {
     const requests = { active: 3, counts: { ...base.me.requests.counts, open: 2, blocked: 1, completed: 9 } };
     render(<RequestsPanel requests={requests} />);
-    expect(screen.getByText('still open').previousSibling).toHaveTextContent('3');
+    expect(screen.getByText(/still open of/)).toHaveTextContent('3 still open of 12 in total');
     const chips = within(screen.getByRole('list')).getAllByRole('listitem').map((li) => li.textContent);
     expect(chips).toEqual(['Open 2', 'Blocked 1', 'Completed 9']);
   });
@@ -63,7 +65,7 @@ describe('RequestsPanel', () => {
 describe('NotificationsPanel', () => {
   it('says all caught up when there is nothing unread', () => {
     render(<NotificationsPanel notifications={{ unread: 0, latest: [] }} now={NOW} />);
-    expect(screen.getByText('You are all caught up.')).toBeInTheDocument();
+    expect(screen.getByText('All caught up')).toBeInTheDocument();
   });
 
   it('lists the newest unread with the unread count in the label', () => {
@@ -96,7 +98,8 @@ describe('AttentionPanel', () => {
 describe('ConsumablesPanel', () => {
   it('says all is well when nothing is low or expiring', () => {
     render(<ConsumablesPanel consumables={{ ...base.lab.consumables, total: 12 }} />);
-    expect(screen.getByText(/Nothing is running low.*12 items/)).toBeInTheDocument();
+    expect(screen.getByText('Stock levels are fine')).toBeInTheDocument();
+    expect(screen.getByText(/12 items tracked/)).toBeInTheDocument();
   });
 
   it('lists low stock with hazards and expiry with wording for expired and soon', () => {
@@ -117,13 +120,14 @@ describe('ConsumablesPanel', () => {
 describe('EquipmentPanel', () => {
   it('handles an empty catalogue', () => {
     render(<EquipmentPanel equipment={base.lab.equipment} />);
-    expect(screen.getByText(/No equipment/)).toBeInTheDocument();
+    expect(screen.getByText('No equipment yet')).toBeInTheDocument();
   });
 
   it('shows units and the kinds that are all in use, with "and N more"', () => {
     const equipment = { kinds: 5, unitsAvailable: 3, unitsTotal: 9, allTaken: { total: 3, items: [{ equipmentId: 1, name: 'Laser' }, { equipmentId: 2, name: 'Scope' }] } };
     render(<EquipmentPanel equipment={equipment} />);
-    expect(screen.getByText('3 / 9')).toBeInTheDocument();
+    expect(screen.getByRole('meter', { name: 'Equipment in use' })).toHaveAttribute('aria-valuenow', '6');
+    expect(screen.getByText('67%')).toBeInTheDocument();
     expect(screen.getByText('All in use: Laser, Scope and 1 more')).toBeInTheDocument();
   });
 });
@@ -145,7 +149,7 @@ describe('RoomsTimeline', () => {
 
   it('shows a note when there are no rooms', () => {
     render(<RoomsTimeline rooms={base.lab.rooms} window={window} now={NOW} />);
-    expect(screen.getByText(/No rooms/)).toBeInTheDocument();
+    expect(screen.getByText('No rooms yet')).toBeInTheDocument();
   });
 });
 
@@ -161,5 +165,19 @@ describe('states', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Could not reach the server');
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+});
+
+describe('ConsumablesPanel when nothing is tracked', () => {
+  it('says nothing is tracked yet', () => {
+    render(<ConsumablesPanel consumables={base.lab.consumables} />);
+    expect(screen.getByText('No consumables tracked')).toBeInTheDocument();
+  });
+});
+
+describe('EquipmentPanel with something free of every kind', () => {
+  it('says every kind has a unit free', () => {
+    render(<EquipmentPanel equipment={{ kinds: 2, unitsAvailable: 2, unitsTotal: 2, allTaken: { total: 0, items: [] } }} />);
+    expect(screen.getByText('Every kind has at least one unit free.')).toBeInTheDocument();
   });
 });
