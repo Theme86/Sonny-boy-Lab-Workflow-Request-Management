@@ -317,7 +317,7 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
         <div
           role="menu"
           aria-label={group.label}
-          className="absolute left-0 mt-2 w-52 overflow-hidden rounded-2xl bg-vl-surface p-1 shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)] dark:bg-vl-surface-2"
+          className="absolute left-0 mt-2 w-52 overflow-hidden rounded-2xl bg-vl-surface p-1 text-vl-ink shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)] dark:bg-vl-surface-2"
         >
           {group.links.map(({ href, label, icon: LinkIcon }) => {
             const current = isActive(pathname, href);
@@ -388,7 +388,7 @@ function ProfileMenu() {
         <div
           role="dialog"
           aria-label="Account"
-          className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-3xl bg-vl-surface-2 p-2 shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)]"
+          className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-3xl bg-vl-surface-2 p-2 text-vl-ink shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)]"
         >
           <p className={`px-4 pt-3 text-center text-sm ${ui.muted}`}>{user.email}</p>
           <div className="flex flex-col items-center px-4 pt-4 pb-5">
