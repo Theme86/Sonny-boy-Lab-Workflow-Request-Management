@@ -7,7 +7,7 @@ type Kind = 'avatar' | 'banner';
 
 export function useProfileImages(setImageError: (kind: Kind, message?: string) => void, touch: () => void) {
   const [resetBanner, setResetBanner] = useState(false);
-  const avatar = useImagePick(AVATAR_MAX_MB, (m) => setImageError('avatar', m), () => {});
+  const avatar = useImagePick(AVATAR_MAX_MB, (m) => setImageError('avatar', m), () => {}, true);
   const banner = useImagePick(BANNER_MAX_MB, (m) => setImageError('banner', m), () => setResetBanner(false));
 
   return {

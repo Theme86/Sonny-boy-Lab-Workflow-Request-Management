@@ -21,11 +21,12 @@ type Input = {
 export function useProfileSubmit({ isSetup, fields, changed, images, setFields, setErrors, setSaved }: Input) {
   const { user, setUser } = useCurrentUser();
   const router = useRouter();
-  const { formError, saving, run } = useSaving();
+  const { formError, saving, run, clearError } = useSaving();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!user) return;
+    clearError();
     setSaved(false);
 
     const fieldErrors = validateProfile(fields);

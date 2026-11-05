@@ -25,7 +25,8 @@ function parseListQuery(query) {
   const role = text(query.role);
   if (role && !ROLES.includes(role)) throw httpError(400, `role must be one of: ${ROLES.join(', ')}`);
 
-  const sortKey = SORT_FIELDS[query.sort] ?? 'createdAt';
+  // Object.hasOwn: ?sort=constructor must not pick up Object.prototype.constructor
+  const sortKey = Object.hasOwn(SORT_FIELDS, query.sort) ? SORT_FIELDS[query.sort] : 'createdAt';
   const order = query.order === 'asc' ? 'asc' : 'desc';
   const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
   const pageSize = Math.min(100, Math.max(1, Number.parseInt(query.pageSize, 10) || 20));

@@ -376,6 +376,7 @@ describe('GET /api/users (user management)', () => {
   test('sort by name ascending; an unknown sort field falls back to createdAt', async () => {
     assert.deepEqual(ids(await list('?sort=name&order=asc')), [1, 2, 3, 4, 5, 6]);
     assert.deepEqual(ids(await list('?sort=password&order=asc')), [1, 2, 3, 4, 5, 6]);
+    assert.deepEqual(ids(await list('?sort=constructor&order=asc')), [1, 2, 3, 4, 5, 6]);
   });
 
   test('includes private fields for the manager but never googleId', async () => {

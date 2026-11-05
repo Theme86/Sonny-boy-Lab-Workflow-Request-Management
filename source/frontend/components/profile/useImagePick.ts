@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { readAsDataUrl, validateImage } from './profileImages';
 
-export function useImagePick(maxMb: number, setError: (message?: string) => void, onPicked: () => void) {
+// clearOnError: a rejected file also drops the one picked before (the avatar does this; the banner keeps it).
+export function useImagePick(maxMb: number, setError: (message?: string) => void, onPicked: () => void, clearOnError = false) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
@@ -15,7 +16,10 @@ export function useImagePick(maxMb: number, setError: (message?: string) => void
     if (!picked) return;
     const error = validateImage(picked, maxMb);
     setError(error ?? undefined);
-    if (error) return;
+    if (error) {
+      if (clearOnError) clear();
+      return;
+    }
     setFile(picked);
     setPreview(null);
     onPicked();

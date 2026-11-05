@@ -17,5 +17,5 @@ export function useSaving() {
     }
   }
 
-  return { formError, saving, run };
+  return { formError, saving, run, clearError: () => setFormError('') };
 }

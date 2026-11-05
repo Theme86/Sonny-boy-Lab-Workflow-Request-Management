@@ -89,7 +89,7 @@ function Rooms() {
         {isManager && (
           <Link
             href="/rooms/new"
-            className="inline-flex h-10 items-center gap-2 rounded-full bg-vl-accent px-5 text-sm font-medium whitespace-nowrap text-white hover:bg-vl-accent-hover"
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-vl-accent px-5 text-sm font-medium whitespace-nowrap text-vl-on-accent hover:bg-vl-accent-hover"
           >
             <span aria-hidden className="text-lg leading-none">+</span>
             New room

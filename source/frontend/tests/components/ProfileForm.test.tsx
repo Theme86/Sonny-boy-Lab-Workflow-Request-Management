@@ -376,6 +376,16 @@ describe('profile picture', () => {
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
   });
 
+  test('a refused picture also drops the one picked before it', async () => {
+    const user = ui();
+    const { container } = render(<ProfileForm mode="edit" />);
+    await user.upload(avatarInput(container), makeFile('me.png', 'image/png'));
+    expect(screen.getByRole('button', { name: 'Keep current picture' })).toBeInTheDocument();
+    await user.upload(avatarInput(container), makeFile('big.png', 'image/png', 2 * 1024 * 1024 + 1));
+    expect(screen.queryByRole('button', { name: 'Keep current picture' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+  });
+
   test('exactly 2 MB is fine', async () => {
     const user = ui();
     const { container } = render(<ProfileForm mode="edit" />);

@@ -199,7 +199,7 @@ function EquipmentList() {
               value={search}
               onChange={(e) => changeSearch(e.target.value)}
               placeholder="Search by name"
-              className="h-11 w-full rounded-full bg-vl-hover pr-4 pl-11 text-[15px] outline-none placeholder:text-vl-muted focus:bg-white focus:ring-2 focus:ring-vl-accent dark:bg-vl-surface-2"
+              className="h-11 w-full rounded-full bg-vl-hover pr-4 pl-11 text-[15px] outline-none placeholder:text-vl-muted focus:bg-white focus:ring-2 focus:ring-vl-accent dark:bg-vl-surface-2 dark:focus:bg-vl-surface"
             />
           </label>
           <select

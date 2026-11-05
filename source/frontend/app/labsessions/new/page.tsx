@@ -410,7 +410,7 @@ function Reserve() {
           <button
             type="submit"
             disabled={saving || !name.trim() || ranges.length === 0 || ranges.length > MAX_RANGES}
-            className="mt-4 w-full rounded-full bg-vl-accent px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="mt-4 w-full rounded-full bg-vl-accent px-5 py-2 text-sm font-medium text-vl-on-accent disabled:opacity-50"
           >
             {saving ? 'Sending...' : ranges.length > 1 ? `Request ${ranges.length} slots` : 'Request booking'}
           </button>
