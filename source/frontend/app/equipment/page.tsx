@@ -193,13 +193,13 @@ function EquipmentList() {
         <div className={`flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center ${ui.border}`}>
           <label className="relative block sm:flex-1">
             <span className="sr-only">Search equipment</span>
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[#5f6368] dark:text-[#9aa0a6]" />
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-vl-muted" />
             <input
               type="search"
               value={search}
               onChange={(e) => changeSearch(e.target.value)}
               placeholder="Search by name"
-              className="h-11 w-full rounded-full bg-[#f1f3f4] pr-4 pl-11 text-[15px] outline-none placeholder:text-[#5f6368] focus:bg-white focus:ring-2 focus:ring-[#1558b0] dark:bg-[#303134] dark:placeholder:text-[#9aa0a6] dark:focus:ring-[#a8c7fa]"
+              className="h-11 w-full rounded-full bg-vl-hover pr-4 pl-11 text-[15px] outline-none placeholder:text-vl-muted focus:bg-white focus:ring-2 focus:ring-vl-accent dark:bg-vl-surface-2"
             />
           </label>
           <select
@@ -247,7 +247,7 @@ function EquipmentList() {
           </thead>
           <tbody className={loading ? 'opacity-60' : ''}>
             {data?.items.map((item) => (
-              <tr key={item.equipmentId} className={`border-b last:border-b-0 ${ui.border} hover:bg-[#f8f9fa] dark:hover:bg-[#28292a]`}>
+              <tr key={item.equipmentId} className={`border-b last:border-b-0 ${ui.border} hover:bg-vl-hover`}>
                 <td className="w-full max-w-0 px-4 py-3">
                   {nameBlock(item)}
                   <p className={`mt-1 pl-20 text-xs lg:hidden ${ui.muted}`}>{item.location || 'No location set'}</p>
@@ -318,7 +318,7 @@ function EquipmentList() {
       {notice && (
         <div
           role="status"
-          className="fixed bottom-6 left-1/2 z-30 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded bg-[#313131] py-3.5 pr-2 pl-4 text-sm text-[#f2f2f2] shadow-lg sm:left-6 sm:translate-x-0 dark:bg-[#e3e3e3] dark:text-[#313131]"
+          className="fixed bottom-6 left-1/2 z-30 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded bg-[#313131] py-3.5 pr-2 pl-4 text-sm text-[#f2f2f2] shadow-lg sm:left-6 sm:translate-x-0 dark:bg-vl-ink dark:text-[#313131]"
         >
           <span>{notice}</span>
           <button

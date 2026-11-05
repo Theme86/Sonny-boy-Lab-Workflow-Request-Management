@@ -298,7 +298,7 @@ function Reserve() {
                   <div
                     key={d.toISOString()}
                     className={`sticky top-0 z-20 flex items-center justify-center text-xs font-medium ${sticky} ${edge} ${
-                      isToday ? 'text-[#0b57d0] dark:text-[#a8c7fa]' : ''
+                      isToday ? 'text-vl-accent' : ''
                     }`}
                     style={{ height: ROW_H }}
                   >
@@ -334,7 +334,7 @@ function Reserve() {
                       cls = 'bg-amber-100 cursor-not-allowed dark:bg-amber-900/40';
                       title = 'Your pending request';
                     } else if (isSel) {
-                      cls = 'bg-[#0b57d0] cursor-pointer';
+                      cls = 'bg-vl-accent cursor-pointer';
                       title = 'Selected, click to remove';
                     }
 
@@ -355,7 +355,7 @@ function Reserve() {
           </div>
 
           <div className={`mt-2 flex flex-wrap gap-4 text-xs ${ui.muted}`}>
-            <Legend color="bg-[#0b57d0]" label="Selected" />
+            <Legend color="bg-vl-accent" label="Selected" />
             <Legend color="bg-gray-300 dark:bg-gray-700" label="Booked" />
             <Legend color="bg-amber-100 dark:bg-amber-900/40" label="Your pending request" />
           </div>
@@ -410,7 +410,7 @@ function Reserve() {
           <button
             type="submit"
             disabled={saving || !name.trim() || ranges.length === 0 || ranges.length > MAX_RANGES}
-            className="mt-4 w-full rounded-full bg-[#0b57d0] px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="mt-4 w-full rounded-full bg-vl-accent px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {saving ? 'Sending...' : ranges.length > 1 ? `Request ${ranges.length} slots` : 'Request booking'}
           </button>

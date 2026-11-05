@@ -21,13 +21,13 @@ export function Lane({ room, window, hours }: { room: RoomStatus; window: DayWin
         {room.name}
         {room.inUseNow && <span className="sr-only"> (in use now)</span>}
       </span>
-      <div className="relative h-6 rounded-sm bg-[#f4f6fa] dark:bg-[#26272a]" style={hourLines(hours)} role="img" aria-label={`${room.name}: ${booked}`}>
+      <div className="relative h-6 rounded-sm bg-vl-canvas dark:bg-vl-surface-2" style={hourLines(hours)} role="img" aria-label={`${room.name}: ${booked}`}>
         {room.busy.map((b) => {
           const left = percentOfWindow(b.start, window);
           return (
             <span
               key={b.start}
-              className="absolute inset-y-1 rounded-sm bg-[#1558b0]/80 dark:bg-[#a8c7fa]/80"
+              className="absolute inset-y-1 rounded-sm bg-vl-accent/80"
               style={{ left: `${left}%`, width: `${Math.max(0.5, percentOfWindow(b.end, window) - left)}%` }}
             />
           );

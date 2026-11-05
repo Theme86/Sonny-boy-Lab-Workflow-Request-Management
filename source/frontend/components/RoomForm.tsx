@@ -191,7 +191,7 @@ export default function RoomForm({ initial, submitLabel, onSubmit, onComplete }:
       <button
         type="submit"
         disabled={saving || !name.trim()}
-        className="h-10 rounded-full bg-[#0b57d0] px-5 text-sm font-medium text-white disabled:opacity-50"
+        className="h-10 rounded-full bg-vl-accent px-5 text-sm font-medium text-white disabled:opacity-50"
       >
         {saving ? 'Saving...' : submitLabel}
       </button>

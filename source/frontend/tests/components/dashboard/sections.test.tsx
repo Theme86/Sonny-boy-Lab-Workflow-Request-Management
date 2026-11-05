@@ -65,7 +65,7 @@ describe('StatusText', () => {
     const { rerender } = render(<StatusText status="rejected" kind="request" />);
     expect(screen.getByText('Rejected')).toHaveClass('text-[#b3261e]');
     rerender(<StatusText status="closed" kind="request" />);
-    expect(screen.getByText('Closed')).toHaveClass('text-[#5b6472]');
+    expect(screen.getByText('Closed')).toHaveClass('text-vl-muted');
   });
 });
 

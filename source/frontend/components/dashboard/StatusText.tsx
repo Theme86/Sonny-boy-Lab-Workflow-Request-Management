@@ -5,7 +5,7 @@ import { STATUS_LABELS } from '@/lib/requests';
 type Tone = 'plain' | 'ok' | 'warn' | 'fault';
 
 const TONE_CLASS: Record<Tone, string> = {
-  plain: 'text-[#5b6472] dark:text-[#9aa0a6]',
+  plain: 'text-vl-muted',
   ok: 'text-[#1a7f37] dark:text-[#7ee2a0]',
   warn: 'text-[#8a5a00] dark:text-[#f9ab00]',
   fault: 'text-[#b3261e] dark:text-[#f2b8b5]',

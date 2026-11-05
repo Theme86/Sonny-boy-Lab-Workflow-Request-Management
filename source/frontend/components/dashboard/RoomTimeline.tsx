@@ -27,7 +27,7 @@ export function RoomTimeline({ rooms, window, now = new Date() }: { rooms: RoomS
           </ul>
           {showNow && (
             <div className={`pointer-events-none absolute inset-y-0 right-4 ${NOW_OFFSET}`} aria-hidden>
-              <span className="absolute inset-y-0 w-px bg-[#1558b0] dark:bg-[#a8c7fa]" style={{ left: `${nowPercent}%` }} />
+              <span className="absolute inset-y-0 w-px bg-vl-accent" style={{ left: `${nowPercent}%` }} />
             </div>
           )}
         </div>

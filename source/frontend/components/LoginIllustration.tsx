@@ -58,7 +58,7 @@ export function LoginIllustration() {
       <DataPoint x={156} y={96} err={8} className="text-[#00897b] dark:text-[#5ad8cc]" />
 
       {/* frame of the arch */}
-      <path d="M20 140 V70 A60 60 0 0 1 140 70 V140 Z" className="fill-[#1558b0] dark:fill-[#a8c7fa]" />
+      <path d="M20 140 V70 A60 60 0 0 1 140 70 V140 Z" className="fill-vl-accent" />
 
       {/* the screen */}
       <g clipPath="url(#scope-screen)">
@@ -90,9 +90,9 @@ export function LoginIllustration() {
       </g>
 
       {/* instrument base with two knobs */}
-      <rect x={12} y={136} width={136} height={14} rx={4} className="fill-[#dadce0] dark:fill-[#3c4043]" />
+      <rect x={12} y={136} width={136} height={14} rx={4} className="fill-vl-line" />
       <circle cx={118} cy={143} r={3.4} className="fill-[#f9ab00]" />
-      <circle cx={131} cy={143} r={3.4} className="fill-[#1558b0] dark:fill-[#a8c7fa]" />
+      <circle cx={131} cy={143} r={3.4} className="fill-vl-accent" />
       <rect x={24} y={141.5} width={30} height={3} rx={1.5} className="fill-[#9aa0a6] dark:fill-[#5f6368]" />
     </svg>
   );

@@ -1,5 +1,5 @@
 // components/icons.tsx — small inline icons (24×24, currentColor)
-import type { SVGProps } from 'react';
+import { useId, type SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -11,12 +11,25 @@ function Svg({ children, ...props }: IconProps) {
   );
 }
 
-/** The lab's mark: a simple vase silhouette. */
+const VASE_OUTLINE = 'M10 2.4C10 6.8 5.6 9.6 5.6 15.2c0 4 2.4 6.4 4 6.4h4.8c1.6 0 4-2.4 4-6.4 0-5.6-4.4-8.4-4.4-12.8z';
+
+/** The lab's mark (logo B, "graduated vase"): a vase outline filled to a level, with measuring ticks cut out of the liquid. */
 export function VaseMark(props: IconProps) {
+  const id = useId();
   return (
-    <Svg {...props}>
-      <path d="M9 2.5h6v2.2l-.9.9c2.6 1.6 4.4 4.3 4.4 7.6 0 4.6-3 8.3-6.5 8.3s-6.5-3.7-6.5-8.3c0-3.3 1.8-6 4.4-7.6L9 4.7z" />
-    </Svg>
+    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" aria-hidden focusable="false" {...props}>
+      <defs>
+        <clipPath id={`${id}-in`}>
+          <path d={VASE_OUTLINE} />
+        </clipPath>
+        <mask id={`${id}-ticks`}>
+          <rect width="24" height="24" fill="#fff" />
+          <path d="M8 14.8h2.4M8 17.2h1.6M8 19.6h2.4" stroke="#000" strokeWidth="0.9" strokeLinecap="round" />
+        </mask>
+      </defs>
+      <rect y="12.4" width="24" height="12" fill="currentColor" clipPath={`url(#${id}-in)`} mask={`url(#${id}-ticks)`} />
+      <path d={VASE_OUTLINE} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
   );
 }
 

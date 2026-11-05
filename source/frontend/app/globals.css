@@ -5,20 +5,80 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #e9eff8;
+  --foreground: #14213a;
   color-scheme: light;
+
+  /* Vase Lab theme. Light = blue-tinted, dark = purple. Use as bg-vl-surface, text-vl-accent, … (no dark: twin needed). */
+  --vl-canvas: #e9eff8;       /* page background */
+  --vl-surface: #ffffff;      /* cards, panels, menus */
+  --vl-surface-2: #f2f6fc;    /* table heads, section bands, inputs at rest */
+  --vl-hover: #e3ebf7;        /* row / button hover */
+  --vl-line: #d5deec;         /* hairlines */
+  --vl-ink: #14213a;          /* main text */
+  --vl-ink-soft: #3a475e;     /* secondary text that is still body copy */
+  --vl-muted: #52607a;        /* labels, meta (5.7:1 on canvas) */
+  --vl-accent: #1558b0;       /* links, primary buttons, the mark */
+  --vl-accent-hover: #124c99;
+  --vl-on-accent: #ffffff;
+  --vl-accent-soft: #d6e4f8;  /* selected nav pill, chips */
+  --vl-accent-ink: #0b3a78;   /* text on accent-soft */
+  --vl-bar: #12447f;          /* top bar */
+  --vl-on-bar: #ffffff;
+  --vl-on-bar-muted: #c9daf3;
+  --vl-bar-hover: #1b5394;
+  --vl-bar-active: #ffffff;
+  --vl-on-bar-active: #12447f;
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #14111c;
+  --foreground: #ece8f4;
   color-scheme: dark;
+
+  --vl-canvas: #14111c;
+  --vl-surface: #1e1a2a;
+  --vl-surface-2: #262036;
+  --vl-hover: #2d2640;
+  --vl-line: #3a3150;
+  --vl-ink: #ece8f4;
+  --vl-ink-soft: #cfc8de;
+  --vl-muted: #a69fb8;
+  --vl-accent: #c4a7ff;
+  --vl-accent-hover: #d6c2ff;
+  --vl-on-accent: #2a1458;
+  --vl-accent-soft: #3b2a63;
+  --vl-accent-ink: #e4d8ff;
+  --vl-bar: #241b3d;
+  --vl-on-bar: #ece8f4;
+  --vl-on-bar-muted: #b9add6;
+  --vl-bar-hover: #30254f;
+  --vl-bar-active: #c4a7ff;
+  --vl-on-bar-active: #2a1458;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-vl-canvas: var(--vl-canvas);
+  --color-vl-surface: var(--vl-surface);
+  --color-vl-surface-2: var(--vl-surface-2);
+  --color-vl-hover: var(--vl-hover);
+  --color-vl-line: var(--vl-line);
+  --color-vl-ink: var(--vl-ink);
+  --color-vl-ink-soft: var(--vl-ink-soft);
+  --color-vl-muted: var(--vl-muted);
+  --color-vl-accent: var(--vl-accent);
+  --color-vl-accent-hover: var(--vl-accent-hover);
+  --color-vl-on-accent: var(--vl-on-accent);
+  --color-vl-accent-soft: var(--vl-accent-soft);
+  --color-vl-accent-ink: var(--vl-accent-ink);
+  --color-vl-bar: var(--vl-bar);
+  --color-vl-on-bar: var(--vl-on-bar);
+  --color-vl-on-bar-muted: var(--vl-on-bar-muted);
+  --color-vl-bar-hover: var(--vl-bar-hover);
+  --color-vl-bar-active: var(--vl-bar-active);
+  --color-vl-on-bar-active: var(--vl-on-bar-active);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

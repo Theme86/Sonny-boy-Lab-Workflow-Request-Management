@@ -62,8 +62,8 @@ export default function LoginPage() {
     <div className={`relative flex min-h-screen flex-col overflow-hidden ${ui.page} ${fontVariables}`} style={{ ...fontStyle, ...GRID_STYLE }}>
       <header className="flex h-16 items-center justify-between px-4 sm:px-8">
         <Link href="/" className={`flex items-center gap-2 rounded ${ui.focus}`}>
-          <VaseMark width={26} height={26} className="text-[#1558b0] dark:text-[#a8c7fa]" />
-          <span className="text-[22px] leading-none text-[#444746] dark:text-[#e3e3e3]">Vase Lab</span>
+          <VaseMark width={26} height={26} className="text-vl-accent" />
+          <span className="text-[22px] leading-none text-vl-ink-soft dark:text-vl-ink">Vase Lab</span>
         </Link>
         <ThemeToggle />
       </header>

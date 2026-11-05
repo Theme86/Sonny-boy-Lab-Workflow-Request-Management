@@ -27,6 +27,9 @@ import { fullName, ROLE_LABELS } from '@/lib/users';
 
 const SETUP_PATH = '/profile/setup';
 
+// focus ring for controls sitting on the coloured top bar (the accent ring would vanish into it)
+const barFocus = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-vl-on-bar';
+
 type IconType = ComponentType<{ width?: number; height?: number; className?: string }>;
 type NavLink = { href: string; label: string; icon: IconType };
 type NavGroup = { key: string; label: string; icon: IconType; links: NavLink[] };
@@ -58,7 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 function Spinner() {
   return (
     <div className="flex justify-center py-24" role="status">
-      <span className="h-7 w-7 animate-spin rounded-full border-[3px] border-[#dadce0] border-t-[#1558b0] dark:border-[#3c4043] dark:border-t-[#a8c7fa]" />
+      <span className="h-7 w-7 animate-spin rounded-full border-[3px] border-vl-line border-t-vl-accent" />
       <span className="sr-only">Loading…</span>
     </div>
   );
@@ -139,11 +142,11 @@ function TopBar() {
   const openLinks = groups.find((g) => g.key === openGroup)?.links ?? [];
 
   return (
-    <header className={`sticky top-0 z-20 border-b ${ui.surface} ${ui.border}`}>
+    <header className="sticky top-0 z-20 bg-vl-bar text-vl-on-bar">
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <Link href="/dashboard" className={`flex shrink-0 items-center gap-2 rounded ${ui.focus}`}>
-          <VaseMark width={26} height={26} className="text-[#1558b0] dark:text-[#a8c7fa]" />
-          <span className="text-[22px] leading-none text-[#444746] dark:text-[#e3e3e3]">Vase Lab</span>
+        <Link href="/dashboard" className={`flex shrink-0 items-center gap-2 rounded ${barFocus}`}>
+          <VaseMark width={26} height={26} className="text-vl-on-bar" />
+          <span className="text-[22px] leading-none font-semibold tracking-tight text-vl-on-bar">Vase Lab</span>
         </Link>
 
         {/* medium screens and up: navigation buttons in the bar */}
@@ -157,13 +160,13 @@ function TopBar() {
                     <Link
                       href={href}
                       aria-current={active ? 'page' : undefined}
-                      className={`flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors ${ui.focus} ${
+                      className={`flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors ${barFocus} ${
                         active
-                          ? 'bg-[#d3e3fd] text-[#041e49] dark:bg-[#004a77] dark:text-[#c2e7ff]'
-                          : `${ui.hover} text-[#444746] dark:text-[#c4c7c5]`
+                          ? 'bg-vl-bar-active text-vl-on-bar-active'
+                          : 'text-vl-on-bar hover:bg-vl-bar-hover'
                       }`}
                     >
-                      <Icon className={active ? '' : 'text-[#5f6368] dark:text-[#9aa0a6]'} />
+                      <Icon className={active ? '' : 'text-vl-on-bar-muted'} />
                       {label}
                     </Link>
                   </li>
@@ -196,10 +199,10 @@ function TopBar() {
                   href={href}
                   onClick={() => setOpenGroup(null)}
                   aria-current={active ? 'page' : undefined}
-                  className={`flex items-center gap-2 border-b-[3px] px-3 py-3 text-sm font-medium whitespace-nowrap ${ui.focus} ${
+                  className={`flex items-center gap-2 border-b-[3px] px-3 py-3 text-sm font-medium whitespace-nowrap ${barFocus} ${
                     active
-                      ? 'border-[#1558b0] text-[#1558b0] dark:border-[#a8c7fa] dark:text-[#a8c7fa]'
-                      : `border-transparent ${ui.muted}`
+                      ? 'border-vl-bar-active text-vl-on-bar'
+                      : 'border-transparent text-vl-on-bar-muted'
                   }`}
                 >
                   <Icon width={18} height={18} />
@@ -217,10 +220,10 @@ function TopBar() {
                   type="button"
                   onClick={() => setOpenGroup(open ? null : group.key)}
                   aria-expanded={open}
-                  className={`flex items-center gap-2 border-b-[3px] px-3 py-3 text-sm font-medium whitespace-nowrap ${ui.focus} ${
+                  className={`flex items-center gap-2 border-b-[3px] px-3 py-3 text-sm font-medium whitespace-nowrap ${barFocus} ${
                     active
-                      ? 'border-[#1558b0] text-[#1558b0] dark:border-[#a8c7fa] dark:text-[#a8c7fa]'
-                      : `border-transparent ${ui.muted}`
+                      ? 'border-vl-bar-active text-vl-on-bar'
+                      : 'border-transparent text-vl-on-bar-muted'
                   }`}
                 >
                   <Icon width={18} height={18} />
@@ -246,10 +249,10 @@ function TopBar() {
                     href={href}
                     onClick={() => setOpenGroup(null)}
                     aria-current={active ? 'page' : undefined}
-                    className={`flex h-9 items-center gap-2 rounded-full px-4 text-sm font-medium ${ui.focus} ${
+                    className={`flex h-9 items-center gap-2 rounded-full px-4 text-sm font-medium ${barFocus} ${
                       active
-                        ? 'bg-[#d3e3fd] text-[#041e49] dark:bg-[#004a77] dark:text-[#c2e7ff]'
-                        : `${ui.hover} text-[#444746] dark:text-[#c4c7c5]`
+                        ? 'bg-vl-bar-active text-vl-on-bar-active'
+                          : 'text-vl-on-bar hover:bg-vl-bar-hover'
                     }`}
                   >
                     <Icon width={18} height={18} />
@@ -295,13 +298,13 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors ${ui.focus} ${
+        className={`flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors ${barFocus} ${
           active
-            ? 'bg-[#d3e3fd] text-[#041e49] dark:bg-[#004a77] dark:text-[#c2e7ff]'
-            : `${ui.hover} text-[#444746] dark:text-[#c4c7c5]`
+            ? 'bg-vl-bar-active text-vl-on-bar-active'
+                          : 'text-vl-on-bar hover:bg-vl-bar-hover'
         }`}
       >
-        <Icon className={active ? '' : 'text-[#5f6368] dark:text-[#9aa0a6]'} />
+        <Icon className={active ? '' : 'text-vl-on-bar-muted'} />
         {group.label}
         <ChevronRightIcon
           width={16}
@@ -314,7 +317,7 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
         <div
           role="menu"
           aria-label={group.label}
-          className="absolute left-0 mt-2 w-52 overflow-hidden rounded-2xl bg-white p-1 shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)] dark:bg-[#282a2c]"
+          className="absolute left-0 mt-2 w-52 overflow-hidden rounded-2xl bg-vl-surface p-1 shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)] dark:bg-vl-surface-2"
         >
           {group.links.map(({ href, label, icon: LinkIcon }) => {
             const current = isActive(pathname, href);
@@ -326,10 +329,10 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
                 onClick={() => setOpen(false)}
                 aria-current={current ? 'page' : undefined}
                 className={`flex h-11 items-center gap-3 rounded-xl px-4 text-sm ${ui.hover} ${ui.focus} ${
-                  current ? 'font-medium text-[#1558b0] dark:text-[#a8c7fa]' : ''
+                  current ? 'font-medium text-vl-accent' : ''
                 }`}
               >
-                <LinkIcon className="text-[#5f6368] dark:text-[#9aa0a6]" />
+                <LinkIcon className="text-vl-muted" />
                 {label}
               </Link>
             );
@@ -377,7 +380,7 @@ function ProfileMenu() {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`Account: ${fullName(user)}`}
-        className={`rounded-full p-1 ${ui.hover} ${ui.focus}`}
+        className={`rounded-full p-1 hover:bg-vl-bar-hover ${barFocus}`}
       >
         <Avatar user={user} size="sm" />
       </button>
@@ -385,7 +388,7 @@ function ProfileMenu() {
         <div
           role="dialog"
           aria-label="Account"
-          className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-3xl bg-[#e9eef6] p-2 shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)] dark:bg-[#282a2c]"
+          className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-3xl bg-vl-surface-2 p-2 shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)]"
         >
           <p className={`px-4 pt-3 text-center text-sm ${ui.muted}`}>{user.email}</p>
           <div className="flex flex-col items-center px-4 pt-4 pb-5">
@@ -398,14 +401,14 @@ function ProfileMenu() {
               </Link>
             )}
           </div>
-          <div className="overflow-hidden rounded-2xl bg-white dark:bg-[#1f1f1f]">
+          <div className="overflow-hidden rounded-2xl bg-vl-surface">
             {user.profileCompletedAt && user.role === 'lab_manager' && (
               <Link
                 href="/users"
                 onClick={() => setOpen(false)}
                 className={`flex h-14 items-center gap-4 px-6 text-sm ${ui.hover} ${ui.focus}`}
               >
-                <GroupIcon className="text-[#5f6368] dark:text-[#9aa0a6]" />
+                <GroupIcon className="text-vl-muted" />
                 Manage users
               </Link>
             )}
@@ -414,7 +417,7 @@ function ProfileMenu() {
               onClick={signOut}
               className={`flex h-14 w-full items-center gap-4 px-6 text-left text-sm ${ui.hover} ${ui.focus}`}
             >
-              <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor" aria-hidden className="text-[#5f6368] dark:text-[#9aa0a6]">
+              <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor" aria-hidden className="text-vl-muted">
                 <path d="M10.1 15.6 11.5 17l5-5-5-5-1.4 1.4 2.6 2.6H3v2h9.7zM19 3H5a2 2 0 0 0-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" />
               </svg>
               Sign out

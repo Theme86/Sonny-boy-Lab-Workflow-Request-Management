@@ -134,7 +134,7 @@ function inputClass(invalid = false) {
 }
 const selectCls = ui.select;
 const labelCls = 'text-sm font-medium';
-const headCellBg = 'bg-[#f8f9fa] dark:bg-[#28292a]';
+const headCellBg = 'bg-vl-hover';
 
 /* ============================================================================
    Icons
@@ -239,7 +239,7 @@ function StockCell({ c }: { c: Consumable }) {
         <span className="font-medium tabular-nums">{fmtNum(c.currentStock)}</span>
         <span className={`text-xs ${ui.muted}`}>{c.unit}</span>
       </div>
-      <div className="mt-1.5 h-1.5 w-full rounded-full bg-[#e8eaed] dark:bg-[#3c4043]">
+      <div className="mt-1.5 h-1.5 w-full rounded-full bg-[#e8eaed] dark:bg-vl-line">
         <div className={`h-1.5 rounded-full ${bar}`} style={{ width: `${Math.max(pct, s === 'out' ? 0 : 3)}%` }} />
       </div>
       <div className={`mt-1 text-[11px] ${ui.muted}`}>
@@ -312,7 +312,7 @@ function Thumb({
 
   if (!resolved || brokenSrc === resolved) {
     return (
-      <div className={`${box} grid shrink-0 place-items-center bg-[#f1f3f4] ${ui.muted} dark:bg-[#2d2e30]`}>
+      <div className={`${box} grid shrink-0 place-items-center bg-vl-hover ${ui.muted}`}>
         <Icon name="flask" className={size === 'lg' ? 'h-8 w-8' : 'h-5 w-5'} />
       </div>
     );
@@ -325,7 +325,7 @@ function Thumb({
         e.stopPropagation();
         onClick?.();
       }}
-      className={`${box} shrink-0 overflow-hidden bg-[#f1f3f4] ring-1 ring-[#dadce0] transition hover:ring-[#1558b0] dark:ring-[#3c4043] ${ui.focus}`}
+      className={`${box} shrink-0 overflow-hidden bg-[#f1f3f4] ring-1 ring-vl-line transition hover:ring-vl-accent ${ui.focus}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={resolved} alt={alt} onError={() => setBrokenSrc(resolved)} className="h-full w-full object-cover" />
@@ -387,7 +387,7 @@ function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className={`relative flex max-h-[94vh] w-full flex-col rounded-t-2xl bg-white shadow-xl dark:bg-[#1e1f20] sm:rounded-2xl ${width}`}>
+      <div className={`relative flex max-h-[94vh] w-full flex-col rounded-t-2xl bg-vl-surface shadow-xl sm:rounded-2xl ${width}`}>
         <div className={`flex items-start justify-between gap-4 border-b px-6 py-4 ${ui.border}`}>
           <div>
             <h2 className="text-base font-semibold">{title}</h2>
@@ -810,7 +810,7 @@ function DetailDrawer({
   return (
     <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label={item.name}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-[#1e1f20]">
+      <aside className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-vl-surface shadow-2xl">
         <div className={`flex items-center justify-between gap-4 border-b px-6 py-4 ${ui.border}`}>
           <div className="min-w-0">
             <p className={`text-xs ${ui.muted}`}>Consumable #{item.consumableId}</p>
@@ -839,8 +839,8 @@ function DetailDrawer({
                 onClick={() => setTab(t.id)}
                 className={`-mb-px whitespace-nowrap border-b-2 pb-3 text-sm transition ${
                   tab === t.id
-                    ? 'border-[#1558b0] font-medium text-[#1558b0] dark:border-[#a8c7fa] dark:text-[#a8c7fa]'
-                    : `border-transparent ${ui.muted} hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3]`
+                    ? 'border-vl-accent font-medium text-vl-accent'
+                    : `border-transparent ${ui.muted} hover:text-vl-ink`
                 }`}
               >
                 {t.label}
@@ -919,7 +919,7 @@ function ConsumableCard({
   const src = resolveImageUrl(c.imageUrl);
   return (
     <div className={`flex flex-col overflow-hidden ${ui.card}`}>
-      <div className="relative aspect-[4/3] bg-[#f1f3f4] dark:bg-[#2d2e30]">
+      <div className="relative aspect-[4/3] bg-vl-hover">
         {src && !broken ? (
           <button type="button" onClick={onImage} className="h-full w-full" title="View image">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -948,7 +948,7 @@ function ConsumableCard({
           <HazardPills hazards={c.hazards} />
         </div>
       </div>
-      <div className={`flex divide-x border-t text-sm ${ui.border} divide-[#dadce0] dark:divide-[#3c4043]`}>
+      <div className={`flex divide-x border-t text-sm ${ui.border} divide-vl-line`}>
         <button type="button" onClick={onOpen} className={`flex-1 py-2 ${ui.hover}`}>View</button>
         {canManage && (
           <>
@@ -977,7 +977,7 @@ function StatCard({
   onClick: () => void;
 }) {
   const toneCls = {
-    gray: 'bg-[#f1f3f4] text-[#5f6368] dark:bg-[#2d2e30] dark:text-[#9aa0a6]',
+    gray: 'bg-vl-hover text-vl-muted',
     amber: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300',
     red: 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300',
   }[tone];
@@ -987,7 +987,7 @@ function StatCard({
       onClick={onClick}
       aria-pressed={active}
       className={`flex items-center gap-4 p-4 text-left transition ${ui.card} ${ui.focus} ${
-        active ? 'ring-2 ring-[#1558b0] dark:ring-[#a8c7fa]' : ''
+        active ? 'ring-2 ring-vl-accent' : ''
       }`}
     >
       <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${toneCls}`}>
@@ -1215,7 +1215,7 @@ export default function ConsumablesPage() {
                   title={v === 'table' ? 'Table view' : 'Grid view'}
                   onClick={() => setView(v)}
                   className={`grid h-8 w-8 place-items-center rounded-full transition ${
-                    view === v ? 'bg-[#1558b0] text-white dark:bg-[#a8c7fa] dark:text-[#062e6f]' : `${ui.muted} ${ui.hover}`
+                    view === v ? 'bg-vl-accent text-white dark:text-vl-on-accent' : `${ui.muted} ${ui.hover}`
                   }`}
                 >
                   <Icon name={v === 'table' ? 'list' : 'grid'} />
@@ -1236,7 +1236,7 @@ export default function ConsumablesPage() {
           </div>
         ) : visible.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-16 text-center">
-            <span className={`grid h-12 w-12 place-items-center rounded-full bg-[#f1f3f4] dark:bg-[#2d2e30] ${ui.muted}`}>
+            <span className={`grid h-12 w-12 place-items-center rounded-full bg-vl-hover ${ui.muted}`}>
               <Icon name="flask" className="h-6 w-6" />
             </span>
             <h3 className="mt-4 text-sm font-semibold">{items.length === 0 ? 'No consumables yet' : 'No consumables match your filters'}</h3>
@@ -1382,7 +1382,7 @@ export default function ConsumablesPage() {
               <Icon name="alert" className="h-5 w-5" />
             </span>
             <p className={`text-sm ${ui.muted}`}>
-              <span className="font-medium text-[#1f1f1f] dark:text-[#e3e3e3]">{deleteTarget.name}</span> will be permanently removed from the inventory.
+              <span className="font-medium text-vl-ink">{deleteTarget.name}</span> will be permanently removed from the inventory.
               This can&apos;t be undone.
             </p>
           </div>
@@ -1392,7 +1392,7 @@ export default function ConsumablesPage() {
       {lightbox && <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
 
       {toast && (
-        <div role="status" className="fixed bottom-4 right-4 z-[70] rounded-lg bg-[#1f1f1f] px-4 py-3 text-sm text-white shadow-lg dark:bg-[#e3e3e3] dark:text-[#1f1f1f]">
+        <div role="status" className="fixed bottom-4 right-4 z-[70] rounded-lg bg-vl-ink px-4 py-3 text-sm text-white shadow-lg dark:text-[#1f1f1f]">
           {toast}
         </div>
       )}

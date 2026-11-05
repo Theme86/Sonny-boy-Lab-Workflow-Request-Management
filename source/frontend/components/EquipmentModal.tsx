@@ -197,7 +197,7 @@ export function EquipmentModal({ item, onClose, onSaved }: Props) {
         aria-modal="true"
         aria-labelledby={titleId}
         onKeyDown={trapFocus}
-        className="flex max-h-full w-full max-w-[560px] flex-col overflow-hidden rounded-3xl bg-white shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)] dark:bg-[#1e1f20] dark:ring-1 dark:ring-[#3c4043]"
+        className="flex max-h-full w-full max-w-[560px] flex-col overflow-hidden rounded-3xl bg-vl-surface shadow-[0_4px_8px_3px_rgba(60,64,67,.15),0_1px_3px_rgba(60,64,67,.3)] dark:ring-1 dark:ring-vl-line"
       >
         <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-col">
           <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-2">
@@ -213,7 +213,7 @@ export function EquipmentModal({ item, onClose, onSaved }: Props) {
               type="button"
               onClick={requestClose}
               aria-label="Close"
-              className={`-mt-1 -mr-2 rounded-full p-2 text-[#5f6368] dark:text-[#9aa0a6] ${ui.hover} ${ui.focus}`}
+              className={`-mt-1 -mr-2 rounded-full p-2 text-vl-muted ${ui.hover} ${ui.focus}`}
             >
               <CloseIcon />
             </button>

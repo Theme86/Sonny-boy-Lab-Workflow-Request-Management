@@ -15,9 +15,9 @@ describe('shared class names', () => {
     }
   });
 
-  test('surfaces and text colours have dark-mode variants', () => {
+  test('surfaces and text colours use theme tokens, so they switch with dark mode', () => {
     for (const name of ['page', 'surface', 'muted', 'border', 'card', 'input'] as const) {
-      expect(ui[name], name).toContain('dark:');
+      expect(ui[name], name).toMatch(/-vl-|dark:/);
     }
   });
 

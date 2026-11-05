@@ -196,7 +196,7 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
         aria-label={user.avatarUrl || avatarFile ? 'Change profile picture' : 'Add profile picture'}
       >
         <Avatar user={user} size="lg" previewSrc={avatarPreview} />
-        <span className="absolute -right-1 -bottom-1 flex h-7 w-7 items-center justify-center rounded-full border border-[#dadce0] bg-white text-[#444746] group-hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:bg-[#1f1f1f] dark:text-[#e3e3e3]">
+        <span className="absolute -right-1 -bottom-1 flex h-7 w-7 items-center justify-center rounded-full border border-vl-line bg-vl-surface text-vl-ink-soft group-hover:bg-[#f1f3f4] dark:bg-[#1f1f1f] dark:text-vl-ink">
           <CameraIcon width={16} height={16} />
         </span>
       </button>
@@ -264,13 +264,13 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
   if (isSetup) {
     return (
       <form onSubmit={onSubmit} noValidate className={`mx-auto grid max-w-[1000px] overflow-hidden md:grid-cols-[340px_minmax(0,1fr)] ${ui.card}`}>
-        <div className="bg-[#e9eef6] px-6 py-8 sm:px-8 sm:py-10 dark:bg-[#282a2c]">
-          <VaseMark width={32} height={32} className="text-[#1558b0] dark:text-[#a8c7fa]" />
+        <div className="bg-vl-surface-2 px-6 py-8 sm:px-8 sm:py-10">
+          <VaseMark width={32} height={32} className="text-vl-accent" />
           <h1 className="mt-5 text-[28px] leading-9">Create your profile</h1>
           <p className={`mt-2 text-base ${ui.muted}`}>
             Tell the lab team who you are. Only your name is required; you can change everything later.
           </p>
-          <p className="mt-5 inline-flex max-w-full rounded-full bg-white/70 px-3 py-1 text-sm break-all dark:bg-white/10">
+          <p className="mt-5 inline-flex max-w-full rounded-full bg-vl-surface/70 px-3 py-1 text-sm break-all dark:bg-white/10">
             {user.email} ({ROLE_LABELS[user.role]})
           </p>
           <div className="mt-8">{photoPicker}</div>
@@ -309,7 +309,7 @@ export function ProfileForm({ mode }: { mode: 'setup' | 'edit' }) {
           {photoPicker}
           <div className="mt-6">
             <div
-              className="h-24 rounded-xl bg-gradient-to-br from-[#c2d7fb] to-[#e8f0fe] bg-cover bg-center sm:h-28 dark:from-[#1d3a6b] dark:to-[#2a2f3a]"
+              className="h-24 rounded-xl bg-gradient-to-br from-[#c2d7fb] to-vl-accent-soft bg-cover bg-center sm:h-28 dark:from-vl-accent-soft dark:to-[#2a2f3a]"
               style={bannerShown ? { backgroundImage: `url("${bannerShown}")` } : undefined}
               role="img"
               aria-label="Banner preview"

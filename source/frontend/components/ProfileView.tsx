@@ -39,13 +39,13 @@ export function ProfileHeader({ user, action }: { user: User; action?: ReactNode
   return (
     <section className={`overflow-hidden ${ui.card}`}>
       <div
-        className="h-28 bg-gradient-to-br from-[#c2d7fb] to-[#e8f0fe] bg-cover bg-center sm:h-32 dark:from-[#1d3a6b] dark:to-[#2a2f3a]"
+        className="h-28 bg-gradient-to-br from-[#c2d7fb] to-vl-accent-soft bg-cover bg-center sm:h-32 dark:from-vl-accent-soft dark:to-[#2a2f3a]"
         style={banner ? { backgroundImage: `url("${banner}")` } : undefined}
         role="img"
         aria-label="Profile banner"
       />
       <div className="px-6 pb-6">
-        <Avatar user={user} size="xl" className="-mt-12 ring-4 ring-white sm:-mt-14 dark:ring-[#1e1f20]" />
+        <Avatar user={user} size="xl" className="-mt-12 ring-4 ring-white sm:-mt-14 dark:ring-vl-surface" />
         <h2 className="mt-4 text-[22px] leading-7 break-words">{fullName(user)}</h2>
         <p className={`mt-1 text-sm break-all ${ui.muted}`}>{user.email}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -86,7 +86,7 @@ export function InfoRow({ label, children, href, aside }: RowProps) {
       <dt className={`text-xs sm:w-40 sm:shrink-0 sm:text-sm ${ui.muted}`}>{label}</dt>
       <dd className="min-w-0 flex-1 text-base break-words">{children}</dd>
       {aside}
-      {href && <ChevronRightIcon className="hidden shrink-0 text-[#5f6368] sm:block dark:text-[#9aa0a6]" />}
+      {href && <ChevronRightIcon className="hidden shrink-0 text-vl-muted sm:block" />}
     </>
   );
   const rowClass = `flex flex-col gap-1 border-t px-6 py-3.5 sm:flex-row sm:items-center sm:gap-4 ${ui.border}`;
