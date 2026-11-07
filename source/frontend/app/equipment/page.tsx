@@ -166,8 +166,8 @@ function EquipmentList() {
       // a successful DELETE answers 204 with no body; a blocked one (still used somewhere) answers 409 with a message
       await apiFetch<null>(`/api/equipment/${item.equipmentId}`, { method: 'DELETE' });
       setNotice(`${item.name} was deleted`);
-      if (data && data.items.length === 1 && page > 1) setPage(page - 1); 
-      else setReloadCount((n) => n + 1);
+      setReloadCount((n) => n + 1); // refreshes the table and the summary cards
+      if (data && data.items.length === 1 && page > 1) setPage(page - 1); // the last item of this page is gone
     } catch (err) {
       setNotice(err instanceof Error ? err.message : 'The equipment could not be deleted');
     } finally {
