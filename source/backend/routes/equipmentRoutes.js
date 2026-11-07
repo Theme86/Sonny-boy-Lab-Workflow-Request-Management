@@ -107,22 +107,40 @@ function toResponse(e) {
     properties: e.properties.map((p) => p.property),
   };
 }
- 
+
+// Allowed sort orders. The client sends a key, never a field name, so only these can be used.
+// name is the tie-breaker, so the order is the same every time and paging stays stable.
+const SORT_OPTIONS = {
+  name: [{ name: 'asc' }],
+  name_desc: [{ name: 'desc' }],
+  available_low: [{ quantityAvailable: 'asc' }, { name: 'asc' }],
+  available_high: [{ quantityAvailable: 'desc' }, { name: 'asc' }],
+  location: [{ location: 'asc' }, { name: 'asc' }],
+};
+
 // READ list
-// GET /api/equipment?q=microscope&category=true&page=1&limit=20
+// GET /api/equipment?q=microscope&available=true&sort=location&page=1&limit=20
+// q searches the name AND the location; sort is one of the keys in SORT_OPTIONS
 router.get('/', requireAuth, async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
  
+  // only a known key picks the order; anything else (even "constructor") falls back to name
+  const sortKey = String(req.query.sort);
+  const orderBy = Object.hasOwn(SORT_OPTIONS, sortKey) ? SORT_OPTIONS[sortKey] : SORT_OPTIONS.name;
+ 
   const where = {};
-  if (req.query.q) where.name = { contains: String(req.query.q) };
+  if (req.query.q) {
+    const q = String(req.query.q);
+    where.OR = [{ name: { contains: q } }, { location: { contains: q } }];
+  }
   if (req.query.available === 'true') where.quantityAvailable = { gt: 0 };
  
   const [items, total] = await Promise.all([
     prisma.equipment.findMany({
       where,
       include: equipmentInclude,
-      orderBy: { name: 'asc' },
+      orderBy,
       skip: (page - 1) * limit,
       take: limit,
     }),

@@ -15,6 +15,16 @@ import { ui } from '@/lib/ui';
 
 const PAGE_SIZE = 10;
  
+// the sort choices; the value is sent to the backend as ?sort=
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Name (A to Z)' },
+  { value: 'name_desc', label: 'Name (Z to A)' },
+  { value: 'available_low', label: 'Fewest available' },
+  { value: 'available_high', label: 'Most available' },
+  { value: 'location', label: 'Location' },
+] as const;
+type SortValue = (typeof SORT_OPTIONS)[number]['value'];
+
 // the pop-up is closed, adding a new item, or editing one
 type ModalState = { mode: 'closed' } | { mode: 'add' } | { mode: 'edit'; item: Equipment };
  
@@ -62,6 +72,7 @@ function EquipmentList() {
  
   const [search, setSearch] = useState('');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
+    const [sort, setSort] = useState<SortValue>('name');
   const [page, setPage] = useState(1);
   const [reloadCount, setReloadCount] = useState(0);
  
@@ -76,8 +87,9 @@ function EquipmentList() {
     const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
     if (q) params.set('q', q);
     if (onlyAvailable) params.set('available', 'true');
+    if (sort !== 'name') params.set('sort', sort); // 'name' is the backend default
     return params.toString();
-  }, [q, onlyAvailable, page]);
+  }, [q, onlyAvailable, sort, page]);
  
   // reloadCount makes "reload after a save or delete" count as a new request
   const queryKey = `${query}|${reloadCount}`;
@@ -108,6 +120,11 @@ function EquipmentList() {
  
   function changeSearch(value: string) {
     setSearch(value);
+    setPage(1);
+  }
+
+  function changeSort(value: SortValue) {
+    setSort(value);
     setPage(1);
   }
  
@@ -192,13 +209,13 @@ function EquipmentList() {
         {/* Filters */}
         <div className={`flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center ${ui.border}`}>
           <label className="relative block sm:flex-1">
-            <span className="sr-only">Search equipment</span>
+            <span className="sr-only">Search equipment by name or location</span>
             <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-vl-muted" />
             <input
               type="search"
               value={search}
               onChange={(e) => changeSearch(e.target.value)}
-              placeholder="Search by name"
+              placeholder="Search by name or location"
               className="h-11 w-full rounded-full bg-vl-hover pr-4 pl-11 text-[15px] outline-none placeholder:text-vl-muted focus:bg-white focus:ring-2 focus:ring-vl-accent dark:bg-vl-surface-2 dark:focus:bg-vl-surface"
             />
           </label>
@@ -210,6 +227,18 @@ function EquipmentList() {
           >
             <option value="all">All equipment</option>
             <option value="available">Available now</option>
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => changeSort(e.target.value as SortValue)}
+            className={`${ui.select} sm:w-48`}
+            aria-label="Sort equipment"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                Sort: {o.label}
+              </option>
+            ))}
           </select>
         </div>
  
