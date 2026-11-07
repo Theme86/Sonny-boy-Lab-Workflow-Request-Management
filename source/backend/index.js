@@ -18,6 +18,7 @@ const equipmentRoutes = require('./routes/equipmentRoutes');
 const notificationRouter = require("./routes/notificationRoutes");
 const labRoomRouter = require("./routes/labRoomRouter");
 const labSessionRouter = require('./routes/labSessionRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 const { requireAuth } = require('./middleware/auth');
 
 
@@ -46,6 +47,7 @@ app.use('/api/requests', requestRoutes);
 app.use("/api/notifications", requireAuth, notificationRouter);
 app.use("/api/lab-rooms", requireAuth, labRoomRouter);
 app.use('/api/lab-sessions', requireAuth, labSessionRouter);
+app.use('/api/dashboard', dashboardRoutes);
 
 
 // Simple Health Check Route

@@ -161,7 +161,7 @@ function Sessions() {
         />
         <Link
           href="/labsessions/new"
-          className="inline-flex h-10 items-center gap-2 rounded-full bg-[#0b57d0] px-5 text-sm font-medium whitespace-nowrap text-white hover:bg-[#0a4cb8]"
+          className="inline-flex h-10 items-center gap-2 rounded-full bg-vl-accent px-5 text-sm font-medium whitespace-nowrap text-vl-on-accent hover:bg-vl-accent-hover"
         >
           <span aria-hidden className="text-lg leading-none">+</span>
           Create session
@@ -175,7 +175,7 @@ function Sessions() {
             onClick={() => setTab(t.key)}
             className={`rounded-full px-4 py-1.5 text-sm font-medium ${
               tab === t.key
-                ? 'bg-[#d3e3fd] text-[#041e49] dark:bg-[#004a77] dark:text-[#c2e7ff]'
+                ? 'bg-vl-accent-soft text-vl-accent-ink'
                 : 'hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
           >

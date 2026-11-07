@@ -243,3 +243,7 @@ NEXT_PUBLIC_API_URL=http://localhost:5175
 - `docs/` contains project design documents and diagrams.
 - `source/backend/prisma/` contains the Prisma schema and migration files.
 - `source/frontend/app/` contains the Next.js UI pages.
+
+## Module notes
+
+- [Dashboard, top bar, users and profile](docs/README-dashboard-users-profile.md): structure, role rules, theme colours, tests and MI.

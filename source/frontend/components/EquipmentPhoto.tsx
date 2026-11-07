@@ -29,7 +29,7 @@ export function EquipmentPhoto({ src, previewSrc, name, size = 'sm', className =
  
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center overflow-hidden bg-[#e9eef6] text-[#5f6368] dark:bg-[#282a2c] dark:text-[#9aa0a6] ${SIZES[size]} ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden bg-vl-surface-2 text-vl-muted ${SIZES[size]} ${className}`}
     >
       {showImage ? (
         <img
