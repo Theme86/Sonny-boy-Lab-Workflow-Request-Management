@@ -4,12 +4,14 @@
 import { useEffect, useState, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { DeleteIcon, EditIcon, PlusIcon } from '@/components/equipmentIcons';
+import { EquipmentLightbox } from '@/components/EquipmentLightbox';
 import { EquipmentModal } from '@/components/EquipmentModal';
 import { EquipmentPhoto } from '@/components/EquipmentPhoto';
+import { EquipmentStats, type EquipmentSummary } from '@/components/EquipmentStats';
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from '@/components/icons';
 import { PageHeading } from '@/components/ProfileView';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, imageUrl } from '@/lib/api';
 import { stockLevel, STOCK_LABELS, type Equipment, type EquipmentListResponse, type Stock } from '@/lib/equipment';
 import { ui } from '@/lib/ui';
 
@@ -72,7 +74,7 @@ function EquipmentList() {
  
   const [search, setSearch] = useState('');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
-    const [sort, setSort] = useState<SortValue>('name');
+  const [sort, setSort] = useState<SortValue>('name');
   const [page, setPage] = useState(1);
   const [reloadCount, setReloadCount] = useState(0);
  
@@ -80,7 +82,9 @@ function EquipmentList() {
   const [notice, setNotice] = useState('');
   const [modal, setModal] = useState<ModalState>({ mode: 'closed' });
   const [busyId, setBusyId] = useState<number | null>(null);
- 
+  const [lightbox, setLightbox] = useState<{ src: string; name: string } | null>(null);
+  const [summary, setSummary] = useState<EquipmentSummary | null>(null);
+
   const q = useDebounced(search.trim());
  
   const query = useMemo(() => {
@@ -103,6 +107,17 @@ function EquipmentList() {
       cancelled = true;
     };
   }, [query, queryKey]);
+
+  // the summary cards cover all equipment, so they only reload after a save or delete
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<EquipmentSummary>('/api/equipment/summary')
+      .then((data) => !cancelled && setSummary(data))
+      .catch(() => {}); // if this fails the cards keep showing a dash, the table still works
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadCount]);
  
   // the notice disappears by itself after a few seconds
   useEffect(() => {
@@ -157,14 +172,26 @@ function EquipmentList() {
  
   const nameBlock = (item: Equipment) => (
     <div className="flex min-w-0 items-center gap-4">
-      <EquipmentPhoto src={item.imageUrl} name={item.name} size="md" />
+      {item.imageUrl ? (
+        // click the photo to see it large
+        <button
+          type="button"
+          onClick={() => setLightbox({ src: imageUrl(item.imageUrl) ?? '', name: item.name })}
+          aria-label={`View photo of ${item.name}`}
+          className={`shrink-0 rounded-xl transition hover:opacity-80 ${ui.focus}`}
+        >
+          <EquipmentPhoto src={item.imageUrl} name={item.name} size="md" />
+        </button>
+      ) : (
+        <EquipmentPhoto src={item.imageUrl} name={item.name} size="md" />
+      )}
       <div className="min-w-0">
         <p className="truncate text-[15px] font-medium">{item.name}</p>
         {item.description && <p className={`mt-0.5 line-clamp-2 text-xs ${ui.muted}`}>{item.description}</p>}
       </div>
     </div>
   );
- 
+
   const actions = (item: Equipment) =>
     canManage && (
       <div className="flex items-center justify-end gap-1">
@@ -204,7 +231,8 @@ function EquipmentList() {
           )
         }
       />
- 
+      <EquipmentStats summary={summary} />
+
       <div className={`overflow-hidden ${ui.card}`}>
         {/* Filters */}
         <div className={`flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center ${ui.border}`}>
@@ -342,6 +370,8 @@ function EquipmentList() {
           onSaved={handleSaved}
         />
       )}
+
+      {lightbox && <EquipmentLightbox src={lightbox.src} name={lightbox.name} onClose={() => setLightbox(null)} />}
  
       {/* Snackbar */}
       {notice && (

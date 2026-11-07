@@ -149,7 +149,23 @@ router.get('/', requireAuth, async (req, res) => {
  
   res.json({ items: items.map(toResponse), page, limit, total });
 });
- 
+
+// SUMMARY (for the cards above the table)
+// GET /api/equipment/summary  ->  { total, inStock, low, out }
+// Must stay ABOVE GET /:id, otherwise "summary" would be read as an id.
+// Same rule as stockLevel() in frontend/lib/equipment.ts: out = none free, low = 25% or less free.
+router.get('/summary', requireAuth, async (req, res) => {
+  const rows = await prisma.equipment.findMany({ select: { quantityTotal: true, quantityAvailable: true } });
+
+  const summary = { total: rows.length, inStock: 0, low: 0, out: 0 };
+  for (const { quantityTotal, quantityAvailable } of rows) {
+    if (quantityAvailable <= 0) summary.out += 1;
+    else if (quantityTotal > 0 && quantityAvailable / quantityTotal <= 0.25) summary.low += 1;
+    else summary.inStock += 1;
+  }
+  res.json(summary);
+});
+
 // READ one
 // GET /api/equipment/:id
 router.get('/:id', requireAuth, async (req, res) => {
