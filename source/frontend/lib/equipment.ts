@@ -75,7 +75,7 @@ export function validateEquipment(fields: EquipmentFields): EquipmentErrors {
 }
  
 /** Body sent to POST / PATCH /api/equipment. An empty optional field becomes null so it is cleared. */
-export function toRequestBody(fields: EquipmentFields) {
+export function toRequestBody(fields: EquipmentFields, isEdit = false) {
   const total = Number(fields.quantityTotal || 0);
   const body: Record<string, unknown> = {
     name: fields.name.trim(),
@@ -85,6 +85,7 @@ export function toRequestBody(fields: EquipmentFields) {
   };
   // on create, leaving "available" empty makes the backend use the total
   if (fields.quantityAvailable.trim() !== '') body.quantityAvailable = Number(fields.quantityAvailable);
+  else if (isEdit) body.quantityAvailable = 0;
   return body;
 }
  

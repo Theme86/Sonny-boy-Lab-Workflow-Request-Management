@@ -18,6 +18,7 @@ import {
 import { ui } from '@/lib/ui';
  
 const PHOTO_MAX_MB = 5;
+const QUANTITY_MAX_DIGITS = 9; // up to 999,999,999, which always fits the database INT column
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
  
 function validatePhoto(file: File): string | null {
@@ -151,7 +152,7 @@ export function EquipmentModal({ item, onClose, onSaved }: Props) {
     try {
       saved = await apiFetch<Equipment>(isEdit ? `/api/equipment/${item.equipmentId}` : '/api/equipment', {
         method: isEdit ? 'PATCH' : 'POST',
-        json: toRequestBody(fields),
+        json: toRequestBody(fields, isEdit),
       });
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'The equipment could not be saved. Try again.');
@@ -305,6 +306,7 @@ export function EquipmentModal({ item, onClose, onSaved }: Props) {
                   value={fields.quantityTotal}
                   onChange={(e) => setField('quantityTotal', e.target.value.replace(/\D/g, ''))}
                   inputMode="numeric"
+                  maxLength={QUANTITY_MAX_DIGITS}
                   placeholder="0"
                   className={`${ui.input} ${errors.quantityTotal ? ui.inputError : ''}`}
                   aria-invalid={!!errors.quantityTotal}
@@ -319,6 +321,7 @@ export function EquipmentModal({ item, onClose, onSaved }: Props) {
                   value={fields.quantityAvailable}
                   onChange={(e) => setField('quantityAvailable', e.target.value.replace(/\D/g, ''))}
                   inputMode="numeric"
+                  maxLength={QUANTITY_MAX_DIGITS}
                   placeholder={isEdit ? '0' : 'Same as total'}
                   className={`${ui.input} ${errors.quantityAvailable ? ui.inputError : ''}`}
                   aria-invalid={!!errors.quantityAvailable}

@@ -2,14 +2,14 @@
 const express = require('express');
 const router = express.Router();
 const { prisma } = require('../lib/prisma');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireActiveUser, requireRole } = require('../middleware/auth');
 const { saveEquipmentImage, deleteEquipmentImage } = require('../utils/saveEquipmentImage');
 
 // Express 5 forwards errors from async handlers automatically,
 // so no asyncHandler wrapper is needed here.
 
 // Roles allowed to create / edit / delete equipment
-const canManage = requireRole('lab_manager');
+const canManage = [requireActiveUser, requireRole('lab_manager')];
 
 // Equipment photo: the raw image bytes are the request body (Content-Type image/jpeg|png|webp), max 5 MB
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
@@ -29,8 +29,17 @@ function parseId(value) {
   return n;
 }
  
+// A whole number from 1 to max; anything else (abc, 1.5, 0, -3) falls back to the default.
+function parseWholeNumber(value, fallback, max) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 1 ? Math.min(n, max) : fallback;
+}
+
+// The quantity columns are MySQL INT, so a larger number would fail inside the database with a 500.
+const INT_MAX = 2147483647;
+
 function isNonNegInt(v) {
-  return Number.isInteger(v) && v >= 0;
+  return Number.isInteger(v) && v >= 0 && v <= INT_MAX;
 }
  
 // Validates + picks only the fields we allow, matching schema.prisma limits.
@@ -59,20 +68,15 @@ function buildData(body, { partial }) {
     data.location = body.location;
   }
  
-  if (body.imageUrl !== undefined) {
-    if (body.imageUrl !== null && (typeof body.imageUrl !== 'string' || body.imageUrl.length > 500)) {
-      throw httpError(400, 'imageUrl must be a string (max 500 chars) or null');
-    }
-    data.imageUrl = body.imageUrl;
-  }
+  // imageUrl is not accepted here: the photo only changes through PUT / DELETE /:id/image
  
   if (body.quantityTotal !== undefined) {
-    if (!isNonNegInt(body.quantityTotal)) throw httpError(400, 'quantityTotal must be an integer >= 0');
+    if (!isNonNegInt(body.quantityTotal)) throw httpError(400, `quantityTotal must be an integer from 0 to ${INT_MAX}`);
     data.quantityTotal = body.quantityTotal;
   }
  
   if (body.quantityAvailable !== undefined) {
-    if (!isNonNegInt(body.quantityAvailable)) throw httpError(400, 'quantityAvailable must be an integer >= 0');
+    if (!isNonNegInt(body.quantityAvailable)) throw httpError(400, `quantityAvailable must be an integer from 0 to ${INT_MAX}`);
     data.quantityAvailable = body.quantityAvailable;
   }
  
@@ -122,8 +126,8 @@ const SORT_OPTIONS = {
 // GET /api/equipment?q=microscope&available=true&sort=location&page=1&limit=20
 // q searches the name AND the location; sort is one of the keys in SORT_OPTIONS
 router.get('/', requireAuth, async (req, res) => {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+  const page = parseWholeNumber(req.query.page, 1, 1000000);
+  const limit = parseWholeNumber(req.query.limit, 20, 100);
  
   // only a known key picks the order; anything else (even "constructor") falls back to name
   const sortKey = String(req.query.sort);
@@ -182,7 +186,7 @@ router.get('/:id', requireAuth, async (req, res) => {
  
 // CREATE 
 // POST /api/equipment
-// body: { name, description?, quantityTotal?, quantityAvailable?, location?, imageUrl?, propertyIds? }
+// body: { name, description?, quantityTotal?, quantityAvailable?, location?, propertyIds? }
 router.post('/', requireAuth, canManage, async (req, res) => {
   const data = buildData(req.body ?? {}, { partial: false });
   const propertyIds = parsePropertyIds(req.body ?? {});

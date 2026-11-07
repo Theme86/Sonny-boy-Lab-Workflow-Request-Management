@@ -149,6 +149,11 @@ function EquipmentList() {
   }
  
   function handleSaved(message: string) {
+    if (modal.mode === 'add') {
+      setSearch('');
+      setOnlyAvailable(false);
+      setPage(1);
+    }
     setModal({ mode: 'closed' });
     setNotice(message);
     setReloadCount((n) => n + 1);
