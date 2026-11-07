@@ -4,17 +4,29 @@
 import { useEffect, useState, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { DeleteIcon, EditIcon, PlusIcon } from '@/components/equipmentIcons';
+import { EquipmentLightbox } from '@/components/EquipmentLightbox';
 import { EquipmentModal } from '@/components/EquipmentModal';
 import { EquipmentPhoto } from '@/components/EquipmentPhoto';
+import { EquipmentStats, type EquipmentSummary } from '@/components/EquipmentStats';
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from '@/components/icons';
 import { PageHeading } from '@/components/ProfileView';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, imageUrl } from '@/lib/api';
 import { stockLevel, STOCK_LABELS, type Equipment, type EquipmentListResponse, type Stock } from '@/lib/equipment';
 import { ui } from '@/lib/ui';
 
 const PAGE_SIZE = 10;
  
+// the sort choices; the value is sent to the backend as ?sort=
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Name (A to Z)' },
+  { value: 'name_desc', label: 'Name (Z to A)' },
+  { value: 'available_low', label: 'Fewest available' },
+  { value: 'available_high', label: 'Most available' },
+  { value: 'location', label: 'Location' },
+] as const;
+type SortValue = (typeof SORT_OPTIONS)[number]['value'];
+
 // the pop-up is closed, adding a new item, or editing one
 type ModalState = { mode: 'closed' } | { mode: 'add' } | { mode: 'edit'; item: Equipment };
  
@@ -62,6 +74,7 @@ function EquipmentList() {
  
   const [search, setSearch] = useState('');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [sort, setSort] = useState<SortValue>('name');
   const [page, setPage] = useState(1);
   const [reloadCount, setReloadCount] = useState(0);
  
@@ -69,15 +82,18 @@ function EquipmentList() {
   const [notice, setNotice] = useState('');
   const [modal, setModal] = useState<ModalState>({ mode: 'closed' });
   const [busyId, setBusyId] = useState<number | null>(null);
- 
+  const [lightbox, setLightbox] = useState<{ src: string; name: string } | null>(null);
+  const [summary, setSummary] = useState<EquipmentSummary | null>(null);
+
   const q = useDebounced(search.trim());
  
   const query = useMemo(() => {
     const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
     if (q) params.set('q', q);
     if (onlyAvailable) params.set('available', 'true');
+    if (sort !== 'name') params.set('sort', sort); // 'name' is the backend default
     return params.toString();
-  }, [q, onlyAvailable, page]);
+  }, [q, onlyAvailable, sort, page]);
  
   // reloadCount makes "reload after a save or delete" count as a new request
   const queryKey = `${query}|${reloadCount}`;
@@ -91,6 +107,17 @@ function EquipmentList() {
       cancelled = true;
     };
   }, [query, queryKey]);
+
+  // the summary cards cover all equipment, so they only reload after a save or delete
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<EquipmentSummary>('/api/equipment/summary')
+      .then((data) => !cancelled && setSummary(data))
+      .catch(() => {}); // if this fails the cards keep showing a dash, the table still works
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadCount]);
  
   // the notice disappears by itself after a few seconds
   useEffect(() => {
@@ -110,6 +137,11 @@ function EquipmentList() {
     setSearch(value);
     setPage(1);
   }
+
+  function changeSort(value: SortValue) {
+    setSort(value);
+    setPage(1);
+  }
  
   function changeAvailability(value: boolean) {
     setOnlyAvailable(value);
@@ -117,6 +149,11 @@ function EquipmentList() {
   }
  
   function handleSaved(message: string) {
+    if (modal.mode === 'add') {
+      setSearch('');
+      setOnlyAvailable(false);
+      setPage(1);
+    }
     setModal({ mode: 'closed' });
     setNotice(message);
     setReloadCount((n) => n + 1);
@@ -140,14 +177,26 @@ function EquipmentList() {
  
   const nameBlock = (item: Equipment) => (
     <div className="flex min-w-0 items-center gap-4">
-      <EquipmentPhoto src={item.imageUrl} name={item.name} size="md" />
+      {item.imageUrl ? (
+        // click the photo to see it large
+        <button
+          type="button"
+          onClick={() => setLightbox({ src: imageUrl(item.imageUrl) ?? '', name: item.name })}
+          aria-label={`View photo of ${item.name}`}
+          className={`shrink-0 rounded-xl transition hover:opacity-80 ${ui.focus}`}
+        >
+          <EquipmentPhoto src={item.imageUrl} name={item.name} size="md" />
+        </button>
+      ) : (
+        <EquipmentPhoto src={item.imageUrl} name={item.name} size="md" />
+      )}
       <div className="min-w-0">
         <p className="truncate text-[15px] font-medium">{item.name}</p>
         {item.description && <p className={`mt-0.5 line-clamp-2 text-xs ${ui.muted}`}>{item.description}</p>}
       </div>
     </div>
   );
- 
+
   const actions = (item: Equipment) =>
     canManage && (
       <div className="flex items-center justify-end gap-1">
@@ -187,18 +236,19 @@ function EquipmentList() {
           )
         }
       />
- 
+      <EquipmentStats summary={summary} />
+
       <div className={`overflow-hidden ${ui.card}`}>
         {/* Filters */}
         <div className={`flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center ${ui.border}`}>
           <label className="relative block sm:flex-1">
-            <span className="sr-only">Search equipment</span>
+            <span className="sr-only">Search equipment by name or location</span>
             <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-vl-muted" />
             <input
               type="search"
               value={search}
               onChange={(e) => changeSearch(e.target.value)}
-              placeholder="Search by name"
+              placeholder="Search by name or location"
               className="h-11 w-full rounded-full bg-vl-hover pr-4 pl-11 text-[15px] outline-none placeholder:text-vl-muted focus:bg-white focus:ring-2 focus:ring-vl-accent dark:bg-vl-surface-2 dark:focus:bg-vl-surface"
             />
           </label>
@@ -210,6 +260,18 @@ function EquipmentList() {
           >
             <option value="all">All equipment</option>
             <option value="available">Available now</option>
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => changeSort(e.target.value as SortValue)}
+            className={`${ui.select} sm:w-48`}
+            aria-label="Sort equipment"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                Sort: {o.label}
+              </option>
+            ))}
           </select>
         </div>
  
@@ -313,6 +375,8 @@ function EquipmentList() {
           onSaved={handleSaved}
         />
       )}
+
+      {lightbox && <EquipmentLightbox src={lightbox.src} name={lightbox.name} onClose={() => setLightbox(null)} />}
  
       {/* Snackbar */}
       {notice && (
