@@ -9,6 +9,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { DesktopNav } from './DesktopNav';
 import { MobileNav } from './MobileNav';
 import { NAV_GROUPS, NAV_ITEMS, ungrouped } from './navConfig';
+import { NotificationBell } from './NotificationBell';
 import { barFocus } from './navStyles';
 import { ProfileMenu } from './ProfileMenu';
 
@@ -31,6 +32,8 @@ export function TopBar() {
         {hasNav && <DesktopNav links={links} groups={groups} pathname={pathname} />}
         <div className="ml-auto flex items-center gap-3">
           <ThemeToggle />
+          {user && <NotificationBell />}
+          {user && <ProfileMenu />}
           {user && <ProfileMenu />}
         </div>
       </div>

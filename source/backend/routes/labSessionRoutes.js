@@ -3,6 +3,7 @@ const { Router } = require("express");
 const { z } = require("zod");
 const { prisma } = require("../lib/prisma");
 const { asyncHandler, HttpError, parseId } = require("../middleware/helpers");
+const { approverIds, notifyUsers } = require("../utils/notify");
 
 const router = Router();
 
@@ -54,6 +55,17 @@ const listQuery = z.object({
 
 // ---------- helpers ----------
 
+// Tell the lecturers and lab managers that a booking is waiting for approval
+// (not the person who booked it). A batch sends ONE message, about its first session.
+async function notifyApprovers(tx, requesterId, session, slotCount = 1) {
+  const slots = slotCount > 1 ? ` (${slotCount} time slots)` : "";
+  await notifyUsers(tx, await approverIds(tx, requesterId), {
+    target: { labSessionId: session.labSessionId },
+    message: `New lab session "${session.name}"${slots} needs approval`,
+    notifType: "approval_needed",
+  });
+}
+
 // Locks the room row so concurrent requests for the same room queue up,
 // then rejects the booking if it overlaps a session that holds the room.
 async function assertNoOverlap(tx, roomId, start, end, excludeId) {
@@ -85,9 +97,11 @@ router.post(
     const data = createSchema.parse(req.body);
     const session = await prisma.$transaction(async (tx) => {
       await assertNoOverlap(tx, data.roomId, data.requestedStart, data.requestedEnd);
-      return tx.labSession.create({
+      const created = await tx.labSession.create({
         data: { ...data, requestedBy: req.user.userId },
       });
+      await notifyApprovers(tx, req.user.userId, created);
+      return created;
     });
     res.status(201).json(session);
   })
@@ -145,6 +159,7 @@ router.post(
           })
         );
       }
+      await notifyApprovers(tx, req.user.userId, out[0], out.length);
       return out;
     });
     res.status(201).json(created);

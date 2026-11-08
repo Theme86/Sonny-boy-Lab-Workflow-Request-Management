@@ -11,6 +11,7 @@ const {
   nextStatuses,
   humanize,
 } = require('../utils/requestStatus');
+const { approverIds, notifyUsers } = require('../utils/notify');
 
 // requireActiveUser re-reads the role from the database, so a role change
 // (or a disabled account) applies immediately instead of when the login token expires.
@@ -82,6 +83,13 @@ router.post('/', ...auth, async (req, res) => {
 
     await tx.requestStatusHistory.create({
       data: { requestId: request.requestId, oldStatus: null, newStatus: 'open', changedBy: userId },
+    });
+
+    // ask the lecturers and lab managers to look at it (not the person who submitted it)
+    await notifyUsers(tx, await approverIds(tx, userId), {
+      target: { requestId: request.requestId },
+      message: `New ${humanize(data.type)} request needs review: "${data.title}"`,
+      notifType: 'approval_needed',
     });
 
     return request;
@@ -165,7 +173,7 @@ router.patch('/:id/status', ...auth, async (req, res) => {
 
   const current = await prisma.request.findUnique({
     where: { requestId },
-    select: { requestId: true, status: true },
+    select: { requestId: true, status: true, requesterId: true, title: true },
   });
   if (!current) return res.status(404).json({ error: 'Request not found' });
 
@@ -187,6 +195,15 @@ router.patch('/:id/status', ...auth, async (req, res) => {
     await tx.requestStatusHistory.create({
       data: { requestId, oldStatus: current.status, newStatus: next, changedBy: req.user.userId },
     });
+
+    // tell the person who submitted it (unless they changed it themselves)
+    if (current.requesterId !== req.user.userId) {
+      await notifyUsers(tx, [current.requesterId], {
+        target: { requestId },
+        message: `Your request "${current.title}" is now ${humanize(next)}`,
+        notifType: 'status_change',
+      });
+    }
     return tx.request.findUnique({ where: { requestId }, include: detailInclude });
   });
 
@@ -215,7 +232,7 @@ router.patch('/:id/assignee', ...auth, async (req, res) => {
 
   const current = await prisma.request.findUnique({
     where: { requestId },
-    select: { requestId: true, status: true },
+    select: { requestId: true, status: true, requesterId: true, title: true, assignedTo: true },
   });
   if (!current) return res.status(404).json({ error: 'Request not found' });
   if (current.status === 'closed') {
@@ -247,6 +264,24 @@ router.patch('/:id/assignee', ...auth, async (req, res) => {
     if (startReview) {
       await tx.requestStatusHistory.create({
         data: { requestId, oldStatus: 'open', newStatus: 'in_review', changedBy: req.user.userId },
+      });
+
+      // assigning an open request moves it to in review, so the requester hears about it too
+      if (current.requesterId !== req.user.userId) {
+        await notifyUsers(tx, [current.requesterId], {
+          target: { requestId },
+          message: `Your request "${current.title}" is now ${humanize('in_review')}`,
+          notifType: 'status_change',
+        });
+      }
+    }
+
+    // tell the person who was given the request (not when it was already theirs, or they assigned themselves)
+    if (assigneeId !== null && assigneeId !== current.assignedTo && assigneeId !== req.user.userId) {
+      await notifyUsers(tx, [assigneeId], {
+        target: { requestId },
+        message: `You were assigned the request "${current.title}"`,
+        notifType: 'status_change',
       });
     }
     return tx.request.findUnique({ where: { requestId }, include: detailInclude });
