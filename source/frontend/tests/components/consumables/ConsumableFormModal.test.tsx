@@ -12,11 +12,17 @@ vi.mock('@/lib/consumablesApi', () => ({
       { hazardId: 2, code: 'GHS02', name: 'Flammable' },
       { hazardId: 7, code: 'GHS07', name: 'Irritant' },
     ]),
+  fetchProperties: () =>
+    Promise.resolve([
+      { propertyId: 1, name: 'Volatile', description: 'Evaporates quickly' },
+      { propertyId: 2, name: 'Light sensitive' },
+    ]),
 }));
 
 const item: Consumable = {
   consumableId: 7, name: 'Ethanol', description: null, unit: 'ml', currentStock: 100, reorderThreshold: 20,
   phValue: null, expiryDate: null, imageUrl: null, hazards: [{ hazardId: 2, code: 'GHS02', name: 'Flammable' }],
+  properties: [{ propertyId: 1, name: 'Volatile' }],
 };
 
 // initial: null opens the "Add" form; leaving it out edits `item`
@@ -71,4 +77,15 @@ test('shows the item\'s hazards as selected and sends the new choice', async () 
   await userEvent.click(irritant);
   await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ hazardIds: [7] }), expect.anything());
+});
+
+test('picks properties the same way and sends propertyIds', async () => {
+  const onSave = renderForm();
+  const volatile = await screen.findByRole('button', { name: 'Volatile' });
+  expect(volatile).toHaveAttribute('aria-pressed', 'true');
+  expect(volatile).toHaveAttribute('title', 'Evaporates quickly');
+
+  await userEvent.click(screen.getByRole('button', { name: 'Light sensitive' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ propertyIds: [1, 2], hazardIds: [2] }), expect.anything());
 });

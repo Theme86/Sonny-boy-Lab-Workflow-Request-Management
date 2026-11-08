@@ -9,7 +9,7 @@ import { btn } from '../ui/styles';
 import { Thumb } from '../ui/Thumb';
 import { useOverlay } from '../ui/useOverlay';
 
-// Properties / Usage / Orders wait for those relations in the backend.
+// Usage / Orders wait for lab sessions and order requests to record consumables.
 const TABS = ['Overview', 'Hazards', 'Properties', 'Usage', 'Orders'] as const;
 type Tab = (typeof TABS)[number];
 
@@ -49,6 +49,20 @@ function Hazards({ item }: { item: Consumable }) {
           <HazardDiamond code={h.code} />
           <span className="text-sm font-medium">{h.name}</span>
           {h.code && <span className={`ml-auto text-xs ${ui.muted}`}>{h.code}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Properties({ item }: { item: Consumable }) {
+  if (!item.properties.length) return <p className={`py-6 text-center text-sm ${ui.muted}`}>No properties recorded.</p>;
+  return (
+    <ul className={`divide-y rounded-lg border ${ui.border} divide-vl-line`}>
+      {item.properties.map((p) => (
+        <li key={p.propertyId} className="px-3 py-2.5">
+          <div className="text-sm font-medium">{p.name}</div>
+          {p.description && <div className={`mt-0.5 text-xs ${ui.muted}`}>{p.description}</div>}
         </li>
       ))}
     </ul>
@@ -124,7 +138,10 @@ export function DetailDrawer({ item, canManage, onClose, onEdit, onDelete, onPre
           </div>
           <TabBar tab={tab} onTab={setTab} />
           <div className="px-6 py-5">
-            {tab === 'Overview' ? <Overview item={item} /> : tab === 'Hazards' ? <Hazards item={item} /> : <NotConnectedYet />}
+            {tab === 'Overview' && <Overview item={item} />}
+            {tab === 'Hazards' && <Hazards item={item} />}
+            {tab === 'Properties' && <Properties item={item} />}
+            {(tab === 'Usage' || tab === 'Orders') && <NotConnectedYet />}
           </div>
         </div>
 
