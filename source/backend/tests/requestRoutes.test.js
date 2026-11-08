@@ -9,7 +9,8 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 
 // ---- fake prisma, injected before the routes are loaded ----
-const db = { requests: [], history: [], equipment: [{ equipmentId: 1 }], nextId: 1 };
+const db = { requests: [], history: [], notifications: [], equipment: [{ equipmentId: 1 }], nextId: 1 };
+const roles = { 1: 'member', 2: 'member', 3: 'lab_manager', 4: 'ta' };
 const user = (id) => ({ userId: id, firstName: 'U' + id, lastName: 'X', email: `u${id}@x.com` });
 
 const fakePrisma = {
@@ -17,6 +18,17 @@ const fakePrisma = {
     findUnique: async ({ where }) => db.equipment.find((e) => e.equipmentId === where.equipmentId) ?? null,
   },
   $transaction: async (fn) => fn(fakePrisma),
+  user: {
+    findUnique: async ({ where }) =>
+      roles[where.userId] ? { userId: where.userId, role: roles[where.userId], active: true } : null,
+    findMany: async ({ where }) =>
+      Object.entries(roles)
+        .map(([id, role]) => ({ userId: Number(id), role }))
+        .filter((u) => where.role.in.includes(u.role) && u.userId !== where.userId.not),
+  },
+  notification: {
+    createMany: async ({ data }) => { db.notifications.push(...data); return { count: data.length }; },
+  },
   request: {
     create: async ({ data }) => {
       const row = {
@@ -122,7 +134,7 @@ test('GET /:id — owner ok, other member 403, staff ok, unknown 404, bad id 400
   const id = db.requests.find((r) => r.requesterId === 1).requestId;
   assert.equal((await call('GET', `/api/requests/${id}`, { as: cookie(1) })).status, 200);
   assert.equal((await call('GET', `/api/requests/${id}`, { as: cookie(2) })).status, 403);
-  assert.equal((await call('GET', `/api/requests/${id}`, { as: cookie(3, 'ta') })).status, 200);
+  assert.equal((await call('GET', `/api/requests/${id}`, { as: cookie(4, 'ta') })).status, 200);
   assert.equal((await call('GET', '/api/requests/9999', { as: cookie(1) })).status, 404);
   assert.equal((await call('GET', '/api/requests/abc', { as: cookie(1) })).status, 400);
 });

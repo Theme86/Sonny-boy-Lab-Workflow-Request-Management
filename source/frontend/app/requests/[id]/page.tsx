@@ -7,8 +7,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { API_URL } from '@/lib/api';
 import {
-  API_URL,
   STATUS_LABELS,
   TYPE_LABELS,
   formatDate,
