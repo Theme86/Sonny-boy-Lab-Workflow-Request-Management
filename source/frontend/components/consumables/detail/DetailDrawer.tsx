@@ -9,8 +9,7 @@ import { btn } from '../ui/styles';
 import { Thumb } from '../ui/Thumb';
 import { useOverlay } from '../ui/useOverlay';
 
-// Usage / Orders wait for lab sessions and order requests to record consumables.
-const TABS = ['Overview', 'Hazards', 'Properties', 'Usage', 'Orders'] as const;
+const TABS = ['Overview', 'Hazards', 'Properties'] as const;
 type Tab = (typeof TABS)[number];
 
 function DetailItem({ label, value }: { label: string; value: ReactNode }) {
@@ -66,18 +65,6 @@ function Properties({ item }: { item: Consumable }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function NotConnectedYet() {
-  return (
-    <>
-      <div className={`mb-4 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${ui.border} ${ui.muted}`}>
-        <Icon name="info" className="h-3.5 w-3.5 shrink-0" />
-        Not connected to the backend yet.
-      </div>
-      <p className={`py-6 text-center text-sm ${ui.muted}`}>Nothing to show yet.</p>
-    </>
   );
 }
 
@@ -141,7 +128,6 @@ export function DetailDrawer({ item, canManage, onClose, onEdit, onDelete, onPre
             {tab === 'Overview' && <Overview item={item} />}
             {tab === 'Hazards' && <Hazards item={item} />}
             {tab === 'Properties' && <Properties item={item} />}
-            {(tab === 'Usage' || tab === 'Orders') && <NotConnectedYet />}
           </div>
         </div>
 

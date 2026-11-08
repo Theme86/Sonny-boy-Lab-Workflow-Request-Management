@@ -4,7 +4,7 @@ import { ui } from '@/lib/ui';
 
 export type IconName =
   | 'plus' | 'search' | 'pencil' | 'trash' | 'x' | 'eye' | 'grid' | 'list'
-  | 'alert' | 'clock' | 'package' | 'flask' | 'ban' | 'info' | 'link';
+  | 'alert' | 'clock' | 'package' | 'flask' | 'ban' | 'link';
 
 const ICONS: Record<IconName, ReactNode> = {
   plus: <path d="M12 5v14M5 12h14" />,
@@ -20,7 +20,6 @@ const ICONS: Record<IconName, ReactNode> = {
   package: <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7 12 12l8.7-5M12 22V12" />,
   flask: <path d="M9 3h6M10 3v6.5L4.6 18.4A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.4-2.6L14 9.5V3M7 15h10" />,
   ban: (<><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></>),
-  info: (<><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" /></>),
   link: <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />,
 };
 
