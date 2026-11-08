@@ -7,12 +7,14 @@ export type NotificationRow = {
   notificationId: number;
   requestId: number | null;
   labSessionId: number | null;
+  consumableId: number | null;
   message: string;
   notifType: NotifType | null;
   isRead: boolean;
   createdAt: string;
   request: { requestId: number; title: string; status: string } | null;
   session: { labSessionId: number; name: string; status: string } | null;
+  consumable: { consumableId: number; name: string } | null;
 };
 
 /** One page of the list; nextCursor is the id to pass as ?before= for the next page (null = no more). */
@@ -33,10 +35,11 @@ export const TYPE_LABELS: Record<NotifType, string> = {
   low_stock: 'Low stock',
 };
 
-/** Where clicking a notification goes. There is no page for a single lab session, so it opens the list. */
-export function notificationHref(n: Pick<NotificationRow, 'requestId' | 'labSessionId'>): string | null {
+/** Where clicking a notification goes. There is no page for a single lab session or consumable, so it opens the list. */
+export function notificationHref(n: Pick<NotificationRow, 'requestId' | 'labSessionId' | 'consumableId'>): string | null {
   if (n.requestId != null) return `/requests/${n.requestId}`;
   if (n.labSessionId != null) return '/labsessions';
+  if (n.consumableId != null) return '/consumables';
   return null;
 }
 
