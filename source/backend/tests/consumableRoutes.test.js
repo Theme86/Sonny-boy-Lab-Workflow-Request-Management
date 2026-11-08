@@ -79,10 +79,30 @@ test('401 without login, 403 for a member who tries to change anything', async (
   assert.equal((await call('POST', '/api/consumables', { as: member, body: { name: 'X', unit: 'ml' } })).status, 403);
 });
 
-test('POST 400 without name or unit', async () => {
-  const res = await call('POST', '/api/consumables', { body: { name: 'Ethanol' } });
+test('POST 400 lists every invalid field and saves nothing', async () => {
+  const before = db.rows.length;
+  const res = await call('POST', '/api/consumables', { body: { name: 'Ethanol', currentStock: -5, phValue: 20 } });
   assert.equal(res.status, 400);
-  assert.equal((await res.json()).error, 'name and unit are required');
+  const json = await res.json();
+  assert.equal(json.error, 'Validation failed');
+  assert.deepEqual(Object.keys(json.details).sort(), ['currentStock', 'phValue', 'unit']);
+  assert.equal(db.rows.length, before);
+});
+
+test('PUT 400 on an invalid field, item unchanged', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', { body: { name: 'KCl', unit: 'g', currentStock: 10 } })).json();
+  const res = await call('PUT', `/api/consumables/${consumableId}`, { body: { currentStock: -1 } });
+  assert.equal(res.status, 400);
+  assert.ok((await res.json()).details.currentStock);
+  assert.equal(find(consumableId).currentStock, 10);
+});
+
+test('PUT keeps working for an old item with a free-text unit', async () => {
+  db.rows.push({ consumableId: db.nextId, name: 'Old reagent', unit: 'bottle', currentStock: 2, reorderThreshold: 1 });
+  const consumableId = db.nextId++;
+  const res = await call('PUT', `/api/consumables/${consumableId}`, { body: { unit: 'bottle', currentStock: 3 } });
+  assert.equal(res.status, 200);
+  assert.equal(find(consumableId).currentStock, 3);
 });
 
 test('POST 201 fills defaults for the optional fields', async () => {

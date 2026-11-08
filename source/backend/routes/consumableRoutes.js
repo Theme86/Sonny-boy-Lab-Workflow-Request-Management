@@ -3,6 +3,7 @@ const router = express.Router();
 const { prisma } = require('../lib/prisma');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { saveConsumableImage, deleteConsumableImage } = require('../utils/saveConsumableImage');
+const { validateConsumableInput } = require('../utils/validateConsumable');
 
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const rawImage = express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: IMAGE_MAX_BYTES });
@@ -33,15 +34,8 @@ async function orNotFound(work) {
   }
 }
 
-/** Only the fields present in the body, so PUT can update some fields and leave the rest. */
-function pickFields(body) {
-  const data = {};
-  for (const field of FIELDS) {
-    if (body[field] === undefined) continue;
-    data[field] = field === 'expiryDate' ? (body.expiryDate ? new Date(body.expiryDate) : null) : body[field];
-  }
-  return data;
-}
+// same shape as requestRoutes, so the frontend's apiFetch can show each message under its field
+const sendInvalid = (res, details) => res.status(400).json({ error: 'Validation failed', details });
 
 // Prisma Decimal columns are sent as numbers.
 const toJson = (c) => ({
@@ -64,34 +58,26 @@ router.get('/', requireAuth, async (req, res) => {
 
 // POST /api/consumables   body: { name, unit, currentStock?, reorderThreshold?, expiryDate?, description?, phValue?, imageUrl? }
 router.post('/', requireAuth, canManage, async (req, res) => {
-  const fields = pickFields(req.body);
-  if (!fields.name || !fields.unit) throw httpError(400, 'name and unit are required');
+  const { ok, errors, data } = validateConsumableInput(req.body);
+  if (!ok) return sendInvalid(res, errors);
 
-  const consumable = await prisma.consumable.create({
-    data: {
-      ...fields,
-      currentStock: fields.currentStock ?? 0,
-      reorderThreshold: fields.reorderThreshold ?? 0,
-      expiryDate: fields.expiryDate ?? null,
-      description: fields.description ?? null,
-      phValue: fields.phValue ?? null,
-      imageUrl: fields.imageUrl ?? null,
-    },
-  });
+  const consumable = await prisma.consumable.create({ data });
   res.status(201).json(consumable);
 });
 
-// PUT /api/consumables/:id   body: any of the POST fields
+// PUT /api/consumables/:id   body: any of the POST fields; only the fields sent are changed
 router.put('/:id', requireAuth, canManage, async (req, res) => {
   const consumableId = parseId(req.params.id);
-  const data = pickFields(req.body);
+  const before = await prisma.consumable.findUnique({ where: { consumableId }, select: { unit: true, imageUrl: true } });
+  if (!before) throw httpError(404, 'Consumable not found');
 
-  // a new or cleared imageUrl replaces an uploaded photo, so the old file is removed
-  const before = data.imageUrl !== undefined
-    ? await prisma.consumable.findUnique({ where: { consumableId }, select: { imageUrl: true } })
-    : null;
+  // an item saved with an old free-text unit (e.g. "bottle") can still be edited without changing it
+  const { ok, errors, data } = validateConsumableInput(req.body, { partial: true, extraUnits: [before.unit] });
+  if (!ok) return sendInvalid(res, errors);
+
   const consumable = await orNotFound(() => prisma.consumable.update({ where: { consumableId }, data }));
-  if (before && before.imageUrl !== data.imageUrl) deleteConsumableImage(consumableId);
+  // a new or cleared imageUrl replaces an uploaded photo, so the old file is removed
+  if (data.imageUrl !== undefined && before.imageUrl !== data.imageUrl) deleteConsumableImage(consumableId);
 
   res.json(consumable);
 });
