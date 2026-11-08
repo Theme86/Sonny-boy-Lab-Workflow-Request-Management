@@ -80,6 +80,7 @@ function checkIdList(v, label) {
 // Optional fields and the value a new consumable gets when the field is left out.
 const OPTIONAL = {
   hazardIds: { check: (v) => checkIdList(v, 'Hazards'), fallback: [] },
+  propertyIds: { check: (v) => checkIdList(v, 'Properties'), fallback: [] },
   currentStock: { check: (v) => checkQuantity(v, 'Current stock'), fallback: 0 },
   reorderThreshold: { check: (v) => checkQuantity(v, 'Reorder threshold'), fallback: 0 },
   description: { check: (v) => checkOptionalText(v, 'Description', LIMITS.descMax), fallback: null },

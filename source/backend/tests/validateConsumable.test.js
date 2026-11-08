@@ -18,7 +18,13 @@ test('accepts name + unit and fills defaults for the rest', () => {
     expiryDate: null,
     imageUrl: null,
     hazardIds: [],
+    propertyIds: [],
   });
+});
+
+test('propertyIds follow the same rules as hazardIds', () => {
+  assert.deepEqual(validateConsumableInput({ ...valid, propertyIds: [3, 3, 1] }).data.propertyIds, [3, 1]);
+  assert.ok(validateConsumableInput({ ...valid, propertyIds: [-1] }).errors.propertyIds);
 });
 
 test('hazardIds: a list of positive whole numbers, duplicates dropped, null means none', () => {

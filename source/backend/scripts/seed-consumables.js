@@ -1,7 +1,7 @@
 // backend/scripts/seed-consumables.js
-// Fills the hazards list (the 9 GHS pictograms) and sample chemicals and supplies for local testing.
-// Safe to run more than once: a hazard (by code) or consumable (by name) that already exists is
-// overwritten with the values in this file, so the sample data always matches this list.
+// Fills the hazards list (the 9 GHS pictograms), the property tags, and sample chemicals and supplies
+// for local testing. Safe to run more than once: a hazard (by code), property or consumable (by name)
+// that already exists is overwritten with the values in this file, so the sample data always matches.
 // Other consumables are left alone.
 //
 // Usage (from source/backend, with the database running):
@@ -46,6 +46,36 @@ const CONSUMABLE_HAZARDS = {
   'Iodine Solution': ['GHS07'],
 };
 
+// storage / handling tags (consumable_property has no unique column, so these are matched by name)
+const PROPERTIES = [
+  { name: 'Light sensitive', description: 'Store in an amber bottle, away from light' },
+  { name: 'Keep refrigerated', description: 'Store at 2–8 °C' },
+  { name: 'Keep frozen', description: 'Store at -20 °C or below' },
+  { name: 'Hygroscopic', description: 'Absorbs moisture; keep tightly closed' },
+  { name: 'Volatile', description: 'Evaporates quickly; keep capped and use in a fume hood' },
+  { name: 'Sterile', description: 'Open only in a clean or sterile area' },
+  { name: 'Single use', description: 'Discard after one use' },
+];
+
+// property names per sample consumable (by name); items not listed have no properties
+const CONSUMABLE_PROPERTIES = {
+  'Agar Powder': ['Hygroscopic'],
+  'Ethanol 95%': ['Volatile'],
+  Glucose: ['Hygroscopic'],
+  'Nitrile Gloves (M)': ['Single use'],
+  'Pipette Tips 200 µl': ['Single use'],
+  'Phosphate Buffered Saline': ['Sterile'],
+  'Acetic Acid (Glacial)': ['Volatile'],
+  Methanol: ['Volatile'],
+  'Hydrochloric Acid': ['Volatile'],
+  'Sodium Hydroxide': ['Hygroscopic'],
+  'Petri Dish 90 mm': ['Sterile', 'Single use'],
+  'Hydrogen Peroxide 3%': ['Light sensitive'],
+  'LB Broth': ['Sterile', 'Keep refrigerated'],
+  'Trypsin-EDTA 0.25%': ['Sterile', 'Keep frozen'],
+  'Iodine Solution': ['Light sensitive'],
+};
+
 const CONSUMABLES = [
   // In stock
   { name: 'Agar Powder', description: 'Bacteriological grade, for culture media preparation', unit: 'g', currentStock: 500, reorderThreshold: 50, phValue: null, expiryDate: daysFromToday(520), imageUrl: commons('Agar-agar.jpg') },
@@ -87,17 +117,28 @@ async function seedHazards() {
   return idByCode;
 }
 
-// replaces the item's hazard links with the ones listed in CONSUMABLE_HAZARDS
-async function linkHazards(consumableId, name, idByCode) {
-  const codes = CONSUMABLE_HAZARDS[name] ?? [];
-  await prisma.hazCon.deleteMany({ where: { consumableId } });
-  if (codes.length) {
-    await prisma.hazCon.createMany({ data: codes.map((code) => ({ consumableId, hazardId: idByCode[code] })) });
+async function seedProperties() {
+  const idByName = {};
+  for (const { name, description } of PROPERTIES) {
+    const existing = await prisma.consumableProperty.findFirst({ where: { name }, select: { propertyId: true } });
+    const property = existing
+      ? await prisma.consumableProperty.update({ where: { propertyId: existing.propertyId }, data: { description } })
+      : await prisma.consumableProperty.create({ data: { name, description } });
+    idByName[name] = property.propertyId;
   }
+  console.log(`Properties seeded: ${PROPERTIES.length}.`);
+  return idByName;
+}
+
+// replaces the item's links in one join table (haz_con or prop_con) with the given ids
+async function replaceLinks(join, key, consumableId, ids) {
+  await prisma[join].deleteMany({ where: { consumableId } });
+  if (ids.length) await prisma[join].createMany({ data: ids.map((id) => ({ consumableId, [key]: id })) });
 }
 
 async function main() {
   const hazardIds = await seedHazards();
+  const propertyIds = await seedProperties();
   let added = 0;
   let updated = 0;
 
@@ -112,7 +153,10 @@ async function main() {
       consumableId = (await prisma.consumable.create({ data: item })).consumableId;
       added++;
     }
-    await linkHazards(consumableId, item.name, hazardIds);
+    const hazards = (CONSUMABLE_HAZARDS[item.name] ?? []).map((code) => hazardIds[code]);
+    const properties = (CONSUMABLE_PROPERTIES[item.name] ?? []).map((name) => propertyIds[name]);
+    await replaceLinks('hazCon', 'hazardId', consumableId, hazards);
+    await replaceLinks('propCon', 'propertyId', consumableId, properties);
   }
 
   console.log(`Consumables seeded: ${added} added, ${updated} updated.`);

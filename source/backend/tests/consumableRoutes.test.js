@@ -14,14 +14,47 @@ const db = {
     { hazardId: 1, code: 'GHS02', name: 'Flammable', description: null },
     { hazardId: 2, code: 'GHS05', name: 'Corrosive', description: null },
   ],
-  links: [], // haz_con rows: { consumableId, hazardId }
+  properties: [
+    { propertyId: 1, name: 'Light sensitive', description: null },
+    { propertyId: 2, name: 'Keep refrigerated', description: null },
+  ],
+  hazCon: [], // { consumableId, hazardId }
+  propCon: [], // { consumableId, propertyId }
   usedByOthers: new Set(), // consumables a lab session or order points to
 };
 const deletedImages = [];
 const prismaError = (code) => Object.assign(new Error(code), { code });
 const find = (id) => db.rows.find((r) => r.consumableId === id);
-const hazardsOf = (id) => db.links.filter((l) => l.consumableId === id).map((l) => ({ hazard: db.hazards.find((h) => h.hazardId === l.hazardId) }));
-const hazardIdsOf = (id) => db.links.filter((l) => l.consumableId === id).map((l) => l.hazardId).sort();
+
+// join table name -> the list it points to, the id column, and the relation field on a join row
+const JOINS = {
+  hazCon: { list: () => db.hazards, key: 'hazardId', relation: 'hazard', field: 'hazards' },
+  propCon: { list: () => db.properties, key: 'propertyId', relation: 'property', field: 'properties' },
+};
+const linkedIds = (join, id) => db[join].filter((l) => l.consumableId === id).map((l) => l[JOINS[join].key]).sort();
+const hazardIdsOf = (id) => linkedIds('hazCon', id);
+const propertyIdsOf = (id) => linkedIds('propCon', id);
+
+function withLinks(row) {
+  const out = { ...row };
+  for (const [join, j] of Object.entries(JOINS)) {
+    out[j.field] = linkedIds(join, row.consumableId).map((id) => ({ [j.relation]: j.list().find((x) => x[j.key] === id) }));
+  }
+  return out;
+}
+
+const joinTable = (join) => ({
+  deleteMany: async ({ where }) => {
+    db[join] = db[join].filter((l) => l.consumableId !== where.consumableId);
+  },
+  createMany: async ({ data }) => {
+    db[join].push(...data);
+  },
+});
+const listTable = (list, key) => ({
+  findMany: async () => list,
+  count: async ({ where }) => list.filter((x) => where[key].in.includes(x[key])).length,
+});
 
 const fakePrisma = {
   $transaction: async (fn) => fn(fakePrisma),
@@ -30,16 +63,17 @@ const fakePrisma = {
       db.rows
         .filter((r) => !where || r.name.includes(where.name.contains))
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map((r) => ({ ...r, hazards: hazardsOf(r.consumableId) })),
+        .map(withLinks),
     // a copy, like real Prisma, so a later update doesn't change what was read before
     findUnique: async ({ where }) => {
       const row = find(where.consumableId);
       return row ? { ...row } : null;
     },
-    create: async ({ data: { hazards, ...data } }) => {
+    create: async ({ data: { hazards, properties, ...data } }) => {
       const row = { consumableId: db.nextId++, ...data };
       db.rows.push(row);
-      for (const { hazardId } of hazards?.create ?? []) db.links.push({ consumableId: row.consumableId, hazardId });
+      for (const link of hazards?.create ?? []) db.hazCon.push({ consumableId: row.consumableId, ...link });
+      for (const link of properties?.create ?? []) db.propCon.push({ consumableId: row.consumableId, ...link });
       return row;
     },
     update: async ({ where, data }) => {
@@ -50,25 +84,16 @@ const fakePrisma = {
     delete: async ({ where }) => {
       const row = find(where.consumableId);
       if (!row) throw prismaError('P2025');
-      if (db.links.some((l) => l.consumableId === row.consumableId) || db.usedByOthers.has(row.consumableId)) {
-        throw prismaError('P2003');
-      }
+      const linked = Object.keys(JOINS).some((join) => db[join].some((l) => l.consumableId === row.consumableId));
+      if (linked || db.usedByOthers.has(row.consumableId)) throw prismaError('P2003');
       db.rows = db.rows.filter((r) => r !== row);
       return row;
     },
   },
-  hazard: {
-    findMany: async () => db.hazards,
-    count: async ({ where }) => db.hazards.filter((h) => where.hazardId.in.includes(h.hazardId)).length,
-  },
-  hazCon: {
-    deleteMany: async ({ where }) => {
-      db.links = db.links.filter((l) => l.consumableId !== where.consumableId);
-    },
-    createMany: async ({ data }) => {
-      db.links.push(...data);
-    },
-  },
+  hazard: listTable(db.hazards, 'hazardId'),
+  consumableProperty: listTable(db.properties, 'propertyId'),
+  hazCon: joinTable('hazCon'),
+  propCon: joinTable('propCon'),
 };
 
 function stubModule(relPath, exports) {
@@ -246,4 +271,29 @@ test('DELETE removes hazard links first; 409 when a lab session or order still u
   db.usedByOthers.add(used.consumableId);
   assert.equal((await call('DELETE', `/api/consumables/${used.consumableId}`)).status, 409);
   assert.ok(find(used.consumableId));
+});
+
+test('GET /properties lists the property tags that can be chosen', async () => {
+  const properties = await (await call('GET', '/api/consumables/properties', { as: member })).json();
+  assert.deepEqual(properties.map((p) => p.name), ['Light sensitive', 'Keep refrigerated']);
+});
+
+test('properties are saved, returned, replaced and checked like hazards', async () => {
+  const res = await call('POST', '/api/consumables', { body: { name: 'Silver nitrate', unit: 'g', propertyIds: [1], hazardIds: [2] } });
+  const { consumableId } = await res.json();
+  assert.deepEqual(propertyIdsOf(consumableId), [1]);
+
+  const rows = await (await call('GET', '/api/consumables', { as: member })).json();
+  assert.deepEqual(rows.find((r) => r.consumableId === consumableId).properties, [{ propertyId: 1, name: 'Light sensitive', description: null }]);
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { propertyIds: [2] } });
+  assert.deepEqual(propertyIdsOf(consumableId), [2]);
+  assert.deepEqual(hazardIdsOf(consumableId), [2]); // hazards not sent, so left alone
+
+  const bad = await call('PUT', `/api/consumables/${consumableId}`, { body: { propertyIds: [99] } });
+  assert.equal(bad.status, 400);
+  assert.ok((await bad.json()).details.propertyIds);
+
+  assert.equal((await call('DELETE', `/api/consumables/${consumableId}`)).status, 204);
+  assert.deepEqual(propertyIdsOf(consumableId), []);
 });

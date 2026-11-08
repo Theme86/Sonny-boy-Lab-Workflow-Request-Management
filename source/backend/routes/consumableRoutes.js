@@ -10,10 +10,19 @@ const rawImage = express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], 
 const canManage = requireRole('lab_manager', 'lecturer');
 
 const FIELDS = ['name', 'unit', 'currentStock', 'reorderThreshold', 'expiryDate', 'description', 'phValue', 'imageUrl'];
-const HAZARD_SELECT = { hazardId: true, code: true, name: true };
+
+// Lists kept in join tables. name = field on Consumable and in the JSON; idsField = what the body sends;
+// join = join table model; relation = field on the join row; target / key = the list table and its id.
+const LINKS = [
+  { name: 'hazards', idsField: 'hazardIds', join: 'hazCon', relation: 'hazard', target: 'hazard', key: 'hazardId',
+    select: { hazardId: true, code: true, name: true }, unknown: 'Choose hazards from the list' },
+  { name: 'properties', idsField: 'propertyIds', join: 'propCon', relation: 'property', target: 'consumableProperty', key: 'propertyId',
+    select: { propertyId: true, name: true, description: true }, unknown: 'Choose properties from the list' },
+];
+
 const LIST_SELECT = {
   ...Object.fromEntries(['consumableId', ...FIELDS].map((f) => [f, true])),
-  hazards: { select: { hazard: { select: HAZARD_SELECT } } },
+  ...Object.fromEntries(LINKS.map((l) => [l.name, { select: { [l.relation]: { select: l.select } } }])),
 };
 
 function httpError(status, message) {
@@ -42,34 +51,63 @@ async function orNotFound(work) {
 // same shape as requestRoutes, so the frontend's apiFetch can show each message under its field
 const sendInvalid = (res, details) => res.status(400).json({ error: 'Validation failed', details });
 
-// Prisma Decimal columns are sent as numbers, and the haz_con join rows become a plain hazards list.
+// Prisma Decimal columns are sent as numbers, and join rows become plain lists (hazards: [{ hazardId, code, name }]).
 const toJson = (c) => ({
   ...c,
   currentStock: Number(c.currentStock),
   reorderThreshold: Number(c.reorderThreshold),
   phValue: c.phValue == null ? null : Number(c.phValue),
-  ...(c.hazards && { hazards: c.hazards.map((link) => link.hazard) }),
+  ...Object.fromEntries(LINKS.filter((l) => c[l.name]).map((l) => [l.name, c[l.name].map((row) => row[l.relation])])),
 });
 
-async function unknownHazards(hazardIds) {
-  if (!hazardIds?.length) return null;
-  const found = await prisma.hazard.count({ where: { hazardId: { in: hazardIds } } });
-  return found === hazardIds.length ? null : { hazardIds: 'Choose hazards from the list' };
+/** Splits validated data into Consumable columns and the id lists (undefined when not sent). */
+function splitLinks(data) {
+  const fields = { ...data };
+  const ids = {};
+  for (const l of LINKS) {
+    ids[l.name] = fields[l.idsField];
+    delete fields[l.idsField];
+  }
+  return { fields, ids };
 }
 
-// replaces every hazard link of the item with `hazardIds`
-async function setHazards(tx, consumableId, hazardIds) {
-  await tx.hazCon.deleteMany({ where: { consumableId } });
-  if (hazardIds.length) await tx.hazCon.createMany({ data: hazardIds.map((hazardId) => ({ consumableId, hazardId })) });
+async function unknownLinkIds(ids) {
+  const details = {};
+  for (const l of LINKS) {
+    const list = ids[l.name];
+    if (!list?.length) continue;
+    const found = await prisma[l.target].count({ where: { [l.key]: { in: list } } });
+    if (found !== list.length) details[l.idsField] = l.unknown;
+  }
+  return Object.keys(details).length ? details : null;
+}
+
+// each list that was sent replaces all of the item's links for that list
+async function replaceLinks(tx, consumableId, ids) {
+  for (const l of LINKS) {
+    const list = ids[l.name];
+    if (!list) continue;
+    await tx[l.join].deleteMany({ where: { consumableId } });
+    if (list.length) await tx[l.join].createMany({ data: list.map((id) => ({ consumableId, [l.key]: id })) });
+  }
 }
 
 // GET /api/consumables/hazards   the GHS hazards that can be attached to a consumable
 router.get('/hazards', requireAuth, async (req, res) => {
   const hazards = await prisma.hazard.findMany({
-    select: { ...HAZARD_SELECT, description: true },
+    select: { hazardId: true, code: true, name: true, description: true },
     orderBy: [{ code: 'asc' }, { name: 'asc' }],
   });
   res.json(hazards);
+});
+
+// GET /api/consumables/properties   the property tags that can be attached to a consumable
+router.get('/properties', requireAuth, async (req, res) => {
+  const properties = await prisma.consumableProperty.findMany({
+    select: { propertyId: true, name: true, description: true },
+    orderBy: { name: 'asc' },
+  });
+  res.json(properties);
 });
 
 // GET /api/consumables?search=
@@ -84,22 +122,21 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // POST /api/consumables
-// body: { name, unit, currentStock?, reorderThreshold?, expiryDate?, description?, phValue?, imageUrl?, hazardIds? }
+// body: { name, unit, currentStock?, reorderThreshold?, expiryDate?, description?, phValue?, imageUrl?, hazardIds?, propertyIds? }
 router.post('/', requireAuth, canManage, async (req, res) => {
   const { ok, errors, data } = validateConsumableInput(req.body);
   if (!ok) return sendInvalid(res, errors);
-  const { hazardIds, ...fields } = data;
-  const linkErrors = await unknownHazards(hazardIds);
+  const { fields, ids } = splitLinks(data);
+  const linkErrors = await unknownLinkIds(ids);
   if (linkErrors) return sendInvalid(res, linkErrors);
 
-  const consumable = await prisma.consumable.create({
-    data: { ...fields, hazards: { create: hazardIds.map((hazardId) => ({ hazardId })) } },
-  });
+  const nested = Object.fromEntries(LINKS.map((l) => [l.name, { create: ids[l.name].map((id) => ({ [l.key]: id })) }]));
+  const consumable = await prisma.consumable.create({ data: { ...fields, ...nested } });
   res.status(201).json(consumable);
 });
 
 // PUT /api/consumables/:id   body: any of the POST fields; only the fields sent are changed.
-// hazardIds, if sent, replaces the whole hazard list.
+// hazardIds / propertyIds, if sent, replace that whole list.
 router.put('/:id', requireAuth, canManage, async (req, res) => {
   const consumableId = parseId(req.params.id);
   const before = await prisma.consumable.findUnique({ where: { consumableId }, select: { unit: true, imageUrl: true } });
@@ -108,13 +145,13 @@ router.put('/:id', requireAuth, canManage, async (req, res) => {
   // an item saved with an old free-text unit (e.g. "bottle") can still be edited without changing it
   const { ok, errors, data } = validateConsumableInput(req.body, { partial: true, extraUnits: [before.unit] });
   if (!ok) return sendInvalid(res, errors);
-  const { hazardIds, ...fields } = data;
-  const linkErrors = await unknownHazards(hazardIds);
+  const { fields, ids } = splitLinks(data);
+  const linkErrors = await unknownLinkIds(ids);
   if (linkErrors) return sendInvalid(res, linkErrors);
 
   const consumable = await orNotFound(() =>
     prisma.$transaction(async (tx) => {
-      if (hazardIds) await setHazards(tx, consumableId, hazardIds);
+      await replaceLinks(tx, consumableId, ids);
       return tx.consumable.update({ where: { consumableId }, data: fields });
     }),
   );
@@ -124,12 +161,12 @@ router.put('/:id', requireAuth, canManage, async (req, res) => {
   res.json(consumable);
 });
 
-// DELETE /api/consumables/:id   hazard links go with it; 409 if a lab session or order still uses it
+// DELETE /api/consumables/:id   hazard / property links go with it; 409 if a lab session or order still uses it
 router.delete('/:id', requireAuth, canManage, async (req, res) => {
   const consumableId = parseId(req.params.id);
   await orNotFound(() =>
     prisma.$transaction(async (tx) => {
-      await tx.hazCon.deleteMany({ where: { consumableId } });
+      for (const l of LINKS) await tx[l.join].deleteMany({ where: { consumableId } });
       return tx.consumable.delete({ where: { consumableId } });
     }),
   );
