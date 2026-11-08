@@ -114,7 +114,7 @@ export function ConsumableFormModal({ initial, onClose, onSave }: Props) {
                 className={inputClass(Boolean(errors.phValue))}
               />
             </Field>
-            <Field label="Expiry date" help="Leave empty if it does not expire.">
+            <Field label="Expiry date" error={errors.expiryDate} help="Leave empty if it does not expire.">
               <input type="date" value={form.expiryDate} onChange={(e) => set('expiryDate', e.target.value)} className={inputClass()} />
             </Field>
           </div>
