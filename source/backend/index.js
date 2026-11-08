@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 
 const { prisma } = require('./lib/prisma');
+const { startExpiryReminders } = require('./services/expiryReminders');
 
 
 
@@ -88,6 +89,7 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`Express server run on port ${PORT}`);
     });
+    startExpiryReminders(prisma);
   } catch (error) {
     console.error('Failed to start server:', error.message);
     process.exit(1);

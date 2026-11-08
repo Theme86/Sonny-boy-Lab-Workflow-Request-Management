@@ -332,6 +332,7 @@ model Consumable {
   properties      PropCon[]
   sessionUsage    LabSessionConsumable[]
   orderItems      ConsumableOrderItem[]
+  notifications   Notification[]
 
   @@map("consumables")
 }
@@ -461,7 +462,7 @@ model EquipmentReservationDetail {
 
 // ============================================
 // NOTIFICATIONS
-// Exactly one of request_id / lab_session_id must be set.
+// Exactly one of request_id / lab_session_id / consumable_id must be set.
 // Enforce at app level or via CHECK constraint (MySQL 8.0.16+) in a raw SQL migration.
 // notif_type CHECK (IN ('status_change','approval_needed','new_comment','reminder','low_stock'))
 // ============================================
@@ -471,6 +472,7 @@ model Notification {
   userId         Int      @map("user_id")
   requestId      Int?     @map("request_id")
   labSessionId   Int?     @map("lab_session_id")
+  consumableId   Int?     @map("consumable_id")
   message        String   @db.VarChar(255)
   notifType      String?  @map("notif_type") @db.VarChar(30)
   isRead         Boolean  @default(false) @map("is_read")
@@ -479,9 +481,12 @@ model Notification {
   user    User        @relation(fields: [userId], references: [userId])
   request Request?    @relation(fields: [requestId], references: [requestId])
   session LabSession? @relation(fields: [labSessionId], references: [labSessionId])
+  // low_stock alerts; deleting the consumable deletes its alerts
+  consumable Consumable? @relation(fields: [consumableId], references: [consumableId], onDelete: Cascade)
 
   @@index([userId, isRead])
   @@index([requestId])
   @@index([labSessionId])
+  @@index([consumableId])
   @@map("notifications")
 }
