@@ -7,35 +7,66 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 
-const db = { rows: [], nextId: 1 };
+const db = {
+  rows: [],
+  nextId: 1,
+  hazards: [
+    { hazardId: 1, code: 'GHS02', name: 'Flammable', description: null },
+    { hazardId: 2, code: 'GHS05', name: 'Corrosive', description: null },
+  ],
+  links: [], // haz_con rows: { consumableId, hazardId }
+  usedByOthers: new Set(), // consumables a lab session or order points to
+};
 const deletedImages = [];
-const notFound = () => Object.assign(new Error('Record not found'), { code: 'P2025' });
+const prismaError = (code) => Object.assign(new Error(code), { code });
 const find = (id) => db.rows.find((r) => r.consumableId === id);
+const hazardsOf = (id) => db.links.filter((l) => l.consumableId === id).map((l) => ({ hazard: db.hazards.find((h) => h.hazardId === l.hazardId) }));
+const hazardIdsOf = (id) => db.links.filter((l) => l.consumableId === id).map((l) => l.hazardId).sort();
 
 const fakePrisma = {
+  $transaction: async (fn) => fn(fakePrisma),
   consumable: {
     findMany: async ({ where }) =>
-      db.rows.filter((r) => !where || r.name.includes(where.name.contains)).sort((a, b) => a.name.localeCompare(b.name)),
+      db.rows
+        .filter((r) => !where || r.name.includes(where.name.contains))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((r) => ({ ...r, hazards: hazardsOf(r.consumableId) })),
     // a copy, like real Prisma, so a later update doesn't change what was read before
     findUnique: async ({ where }) => {
       const row = find(where.consumableId);
       return row ? { ...row } : null;
     },
-    create: async ({ data }) => {
+    create: async ({ data: { hazards, ...data } }) => {
       const row = { consumableId: db.nextId++, ...data };
       db.rows.push(row);
+      for (const { hazardId } of hazards?.create ?? []) db.links.push({ consumableId: row.consumableId, hazardId });
       return row;
     },
     update: async ({ where, data }) => {
       const row = find(where.consumableId);
-      if (!row) throw notFound();
+      if (!row) throw prismaError('P2025');
       return Object.assign(row, data);
     },
     delete: async ({ where }) => {
       const row = find(where.consumableId);
-      if (!row) throw notFound();
+      if (!row) throw prismaError('P2025');
+      if (db.links.some((l) => l.consumableId === row.consumableId) || db.usedByOthers.has(row.consumableId)) {
+        throw prismaError('P2003');
+      }
       db.rows = db.rows.filter((r) => r !== row);
       return row;
+    },
+  },
+  hazard: {
+    findMany: async () => db.hazards,
+    count: async ({ where }) => db.hazards.filter((h) => where.hazardId.in.includes(h.hazardId)).length,
+  },
+  hazCon: {
+    deleteMany: async ({ where }) => {
+      db.links = db.links.filter((l) => l.consumableId !== where.consumableId);
+    },
+    createMany: async ({ data }) => {
+      db.links.push(...data);
     },
   },
 };
@@ -170,4 +201,49 @@ test('PUT /:id/image stores the photo URL; DELETE /:id/image clears it', async (
 
   assert.equal((await call('DELETE', `/api/consumables/${consumableId}/image`)).status, 200);
   assert.equal(find(consumableId).imageUrl, null);
+});
+
+test('GET /hazards lists the hazards that can be chosen', async () => {
+  const hazards = await (await call('GET', '/api/consumables/hazards', { as: member })).json();
+  assert.deepEqual(hazards.map((h) => h.code), ['GHS02', 'GHS05']);
+});
+
+test('POST saves the chosen hazards and GET returns them as a plain list', async () => {
+  const res = await call('POST', '/api/consumables', { body: { name: 'Methanol', unit: 'l', hazardIds: [1, 2] } });
+  assert.equal(res.status, 201);
+  const { consumableId } = await res.json();
+  assert.deepEqual(hazardIdsOf(consumableId), [1, 2]);
+
+  const rows = await (await call('GET', '/api/consumables', { as: member })).json();
+  assert.deepEqual(rows.find((r) => r.consumableId === consumableId).hazards.map((h) => h.code), ['GHS02', 'GHS05']);
+});
+
+test('POST/PUT 400 when a hazard id does not exist', async () => {
+  const res = await call('POST', '/api/consumables', { body: { name: 'X', unit: 'ml', hazardIds: [99] } });
+  assert.equal(res.status, 400);
+  assert.ok((await res.json()).details.hazardIds);
+});
+
+test('PUT replaces the hazard list when hazardIds is sent, keeps it otherwise', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', { body: { name: 'HCl 1M', unit: 'ml', hazardIds: [2] } })).json();
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { currentStock: 5 } });
+  assert.deepEqual(hazardIdsOf(consumableId), [2]);
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { hazardIds: [1] } });
+  assert.deepEqual(hazardIdsOf(consumableId), [1]);
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { hazardIds: [] } });
+  assert.deepEqual(hazardIdsOf(consumableId), []);
+});
+
+test('DELETE removes hazard links first; 409 when a lab session or order still uses the item', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', { body: { name: 'Acetone', unit: 'l', hazardIds: [1] } })).json();
+  assert.equal((await call('DELETE', `/api/consumables/${consumableId}`)).status, 204);
+  assert.deepEqual(hazardIdsOf(consumableId), []);
+
+  const used = await (await call('POST', '/api/consumables', { body: { name: 'Agarose', unit: 'g' } })).json();
+  db.usedByOthers.add(used.consumableId);
+  assert.equal((await call('DELETE', `/api/consumables/${used.consumableId}`)).status, 409);
+  assert.ok(find(used.consumableId));
 });

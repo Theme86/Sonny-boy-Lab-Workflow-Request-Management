@@ -68,8 +68,18 @@ function checkImageUrl(v) {
   return result;
 }
 
+// a list of ids for a many-to-many link (e.g. hazardIds); duplicates are dropped
+function checkIdList(v, label) {
+  if (v === null) return { value: [] };
+  if (!Array.isArray(v) || !v.every((id) => Number.isInteger(id) && id > 0)) {
+    return { error: `${label} must be a list of ids` };
+  }
+  return { value: [...new Set(v)] };
+}
+
 // Optional fields and the value a new consumable gets when the field is left out.
 const OPTIONAL = {
+  hazardIds: { check: (v) => checkIdList(v, 'Hazards'), fallback: [] },
   currentStock: { check: (v) => checkQuantity(v, 'Current stock'), fallback: 0 },
   reorderThreshold: { check: (v) => checkQuantity(v, 'Reorder threshold'), fallback: 0 },
   description: { check: (v) => checkOptionalText(v, 'Description', LIMITS.descMax), fallback: null },

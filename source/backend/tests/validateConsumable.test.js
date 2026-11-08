@@ -17,7 +17,17 @@ test('accepts name + unit and fills defaults for the rest', () => {
     phValue: null,
     expiryDate: null,
     imageUrl: null,
+    hazardIds: [],
   });
+});
+
+test('hazardIds: a list of positive whole numbers, duplicates dropped, null means none', () => {
+  assert.deepEqual(validateConsumableInput({ ...valid, hazardIds: [2, 5, 2] }).data.hazardIds, [2, 5]);
+  assert.deepEqual(validateConsumableInput({ hazardIds: null }, { partial: true }).data.hazardIds, []);
+  for (const hazardIds of ['2,5', [0], [1.5], ['2']]) {
+    assert.ok(validateConsumableInput({ ...valid, hazardIds }).errors.hazardIds);
+  }
+  assert.equal(validateConsumableInput({ currentStock: 1 }, { partial: true }).data.hazardIds, undefined);
 });
 
 test('trims text and turns blank optional fields into null', () => {
