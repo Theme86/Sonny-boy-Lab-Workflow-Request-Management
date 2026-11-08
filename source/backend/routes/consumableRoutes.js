@@ -1,11 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { prisma } = require('../lib/prisma');
-const { requireAuth,  requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole } = require('../middleware/auth');
 const { saveConsumableImage, deleteConsumableImage } = require('../utils/saveConsumableImage');
 
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const rawImage = express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: IMAGE_MAX_BYTES });
+const canManage = requireRole('lab_manager', 'lecturer');
+
+const FIELDS = ['name', 'unit', 'currentStock', 'reorderThreshold', 'expiryDate', 'description', 'phValue', 'imageUrl'];
+const LIST_SELECT = Object.fromEntries(['consumableId', ...FIELDS].map((f) => [f, true]));
 
 function httpError(status, message) {
   const err = new Error(message);
@@ -19,118 +23,89 @@ function parseId(value) {
   return id;
 }
 
-// GET /api/consumables
-router.get('/', requireAuth,  async (req, res) => {
-    const search = req.query.search;
-    const consumables =  await prisma.consumable.findMany({
-        where: search
-            ? { name: { contains: search } }
-            : undefined,
-        select: {
-            consumableId: true,
-            name: true,
-            unit: true,
-            currentStock: true,
-            reorderThreshold: true,
-            expiryDate: true,
-            description: true,
-            phValue: true,
-            imageUrl: true,
-        },
-        orderBy: {name: 'asc'}
-    }
-    );
-    res.json(
-  consumables.map((c) => ({
-    ...c,
-    currentStock: Number(c.currentStock),
-    reorderThreshold: Number(c.reorderThreshold),
-    phValue: c.phValue == null? null : Number(c.phValue),
-  }))
-);
-})
-
-router.post('/', requireAuth, requireRole('lab_manager', 'lecturer'), async (req, res) => {
-  const { name, unit, currentStock, reorderThreshold, expiryDate, description, phValue, imageUrl } = req.body;
-
-  if (!name || !unit) {
-    return res.status(400).json({ error: 'name and unit are required' });
+// Prisma's "record not found" (P2025) becomes a 404.
+async function orNotFound(work) {
+  try {
+    return await work();
+  } catch (err) {
+    if (err.code === 'P2025') throw httpError(404, 'Consumable not found');
+    throw err;
   }
+}
+
+/** Only the fields present in the body, so PUT can update some fields and leave the rest. */
+function pickFields(body) {
+  const data = {};
+  for (const field of FIELDS) {
+    if (body[field] === undefined) continue;
+    data[field] = field === 'expiryDate' ? (body.expiryDate ? new Date(body.expiryDate) : null) : body[field];
+  }
+  return data;
+}
+
+// Prisma Decimal columns are sent as numbers.
+const toJson = (c) => ({
+  ...c,
+  currentStock: Number(c.currentStock),
+  reorderThreshold: Number(c.reorderThreshold),
+  phValue: c.phValue == null ? null : Number(c.phValue),
+});
+
+// GET /api/consumables?search=
+router.get('/', requireAuth, async (req, res) => {
+  const { search } = req.query;
+  const consumables = await prisma.consumable.findMany({
+    where: search ? { name: { contains: search } } : undefined,
+    select: LIST_SELECT,
+    orderBy: { name: 'asc' },
+  });
+  res.json(consumables.map(toJson));
+});
+
+// POST /api/consumables   body: { name, unit, currentStock?, reorderThreshold?, expiryDate?, description?, phValue?, imageUrl? }
+router.post('/', requireAuth, canManage, async (req, res) => {
+  const fields = pickFields(req.body);
+  if (!fields.name || !fields.unit) throw httpError(400, 'name and unit are required');
 
   const consumable = await prisma.consumable.create({
     data: {
-      name,
-      unit,
-      currentStock: currentStock ?? 0,
-      reorderThreshold: reorderThreshold ?? 0,
-      expiryDate: expiryDate ? new Date(expiryDate) : null,
-      description: description ?? null,
-      phValue: phValue ?? null,
-      imageUrl: imageUrl ?? null,
+      ...fields,
+      currentStock: fields.currentStock ?? 0,
+      reorderThreshold: fields.reorderThreshold ?? 0,
+      expiryDate: fields.expiryDate ?? null,
+      description: fields.description ?? null,
+      phValue: fields.phValue ?? null,
+      imageUrl: fields.imageUrl ?? null,
     },
   });
-
   res.status(201).json(consumable);
 });
 
-router.put('/:id', requireAuth, requireRole('lab_manager', 'lecturer'), async (req, res) => {
-  const consumableId = Number(req.params.id);
+// PUT /api/consumables/:id   body: any of the POST fields
+router.put('/:id', requireAuth, canManage, async (req, res) => {
+  const consumableId = parseId(req.params.id);
+  const data = pickFields(req.body);
 
-  if (!Number.isInteger(consumableId) || consumableId <= 0) {
-    return res.status(400).json({ error: 'Invalid consumable id' });
-  }
+  // a new or cleared imageUrl replaces an uploaded photo, so the old file is removed
+  const before = data.imageUrl !== undefined
+    ? await prisma.consumable.findUnique({ where: { consumableId }, select: { imageUrl: true } })
+    : null;
+  const consumable = await orNotFound(() => prisma.consumable.update({ where: { consumableId }, data }));
+  if (before && before.imageUrl !== data.imageUrl) deleteConsumableImage(consumableId);
 
-  const { name, unit, currentStock, reorderThreshold, expiryDate, description, phValue, imageUrl } = req.body;
-
-  try {
-    const current = imageUrl !== undefined
-      ? await prisma.consumable.findUnique({ where: { consumableId }, select: { imageUrl: true } })
-      : null;
-    const consumable = await prisma.consumable.update({
-      where: { consumableId },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(unit !== undefined && { unit }),
-        ...(currentStock !== undefined && { currentStock }),
-        ...(reorderThreshold !== undefined && { reorderThreshold }),
-        ...(expiryDate !== undefined && { expiryDate: expiryDate ? new Date(expiryDate) : null }),
-        ...(description !== undefined && { description }),
-        ...(phValue !== undefined && { phValue }),
-        ...(imageUrl !== undefined && { imageUrl }),
-      },
-    });
-    if (current && current.imageUrl !== imageUrl) deleteConsumableImage(consumableId);
-
-    res.json(consumable);
-  } catch (err) {
-    if (err.code === 'P2025') {
-      return res.status(404).json({ error: 'Consumable not found' });
-    }
-    throw err;
-  }
+  res.json(consumable);
 });
 
-router.delete('/:id', requireAuth, requireRole('lab_manager', 'lecturer'), async (req, res) => {
-  const consumableId = Number(req.params.id);
-
-  if (!Number.isInteger(consumableId) || consumableId <= 0) {
-    return res.status(400).json({ error: 'Invalid consumable id' });
-  }
-
-  try {
-    await prisma.consumable.delete({ where: { consumableId } });
-    deleteConsumableImage(consumableId);
-    res.status(204).send();
-  } catch (err) {
-    if (err.code === 'P2025') {
-      return res.status(404).json({ error: 'Consumable not found' });
-    }
-    throw err;
-  }
+// DELETE /api/consumables/:id
+router.delete('/:id', requireAuth, canManage, async (req, res) => {
+  const consumableId = parseId(req.params.id);
+  await orNotFound(() => prisma.consumable.delete({ where: { consumableId } }));
+  deleteConsumableImage(consumableId);
+  res.status(204).send();
 });
 
 // PUT /api/consumables/:id/image   body = the image file itself
-router.put('/:id/image', requireAuth, requireRole('lab_manager', 'lecturer'), rawImage, async (req, res) => {
+router.put('/:id/image', requireAuth, canManage, rawImage, async (req, res) => {
   const consumableId = parseId(req.params.id);
   if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
     throw httpError(400, 'Send the image file as the request body with Content-Type image/jpeg, image/png or image/webp');
@@ -140,30 +115,15 @@ router.put('/:id/image', requireAuth, requireRole('lab_manager', 'lecturer'), ra
   if (!exists) throw httpError(404, 'Consumable not found');
 
   const imageUrl = saveConsumableImage(consumableId, req.body);
-  const updated = await prisma.consumable.update({
-    where: { consumableId },
-    data: { imageUrl },
-  });
-  res.json(updated);
+  res.json(await prisma.consumable.update({ where: { consumableId }, data: { imageUrl } }));
 });
 
 // DELETE /api/consumables/:id/image   removes the photo
-router.delete('/:id/image', requireAuth, requireRole('lab_manager', 'lecturer'), async (req, res) => {
+router.delete('/:id/image', requireAuth, canManage, async (req, res) => {
   const consumableId = parseId(req.params.id);
-  try {
-    const updated = await prisma.consumable.update({
-      where: { consumableId },
-      data: { imageUrl: null },
-    });
-    deleteConsumableImage(consumableId);
-    res.json(updated);
-  } catch (err) {
-    if (err.code === 'P2025') {
-      return res.status(404).json({ error: 'Consumable not found' });
-    }
-    throw err;
-  }
+  const updated = await orNotFound(() => prisma.consumable.update({ where: { consumableId }, data: { imageUrl: null } }));
+  deleteConsumableImage(consumableId);
+  res.json(updated);
 });
-
 
 module.exports = router;
