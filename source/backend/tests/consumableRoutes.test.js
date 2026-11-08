@@ -1,0 +1,153 @@
+// Route tests for /api/consumables with an in-memory fake Prisma and image store (no database or disk needed).
+process.env.JWT_SECRET = 'test-secret';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const express = require('express');
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
+
+const db = { rows: [], nextId: 1 };
+const deletedImages = [];
+const notFound = () => Object.assign(new Error('Record not found'), { code: 'P2025' });
+const find = (id) => db.rows.find((r) => r.consumableId === id);
+
+const fakePrisma = {
+  consumable: {
+    findMany: async ({ where }) =>
+      db.rows.filter((r) => !where || r.name.includes(where.name.contains)).sort((a, b) => a.name.localeCompare(b.name)),
+    // a copy, like real Prisma, so a later update doesn't change what was read before
+    findUnique: async ({ where }) => {
+      const row = find(where.consumableId);
+      return row ? { ...row } : null;
+    },
+    create: async ({ data }) => {
+      const row = { consumableId: db.nextId++, ...data };
+      db.rows.push(row);
+      return row;
+    },
+    update: async ({ where, data }) => {
+      const row = find(where.consumableId);
+      if (!row) throw notFound();
+      return Object.assign(row, data);
+    },
+    delete: async ({ where }) => {
+      const row = find(where.consumableId);
+      if (!row) throw notFound();
+      db.rows = db.rows.filter((r) => r !== row);
+      return row;
+    },
+  },
+};
+
+function stubModule(relPath, exports) {
+  const file = require.resolve(relPath);
+  require.cache[file] = { id: file, filename: file, loaded: true, exports };
+}
+stubModule('../lib/prisma', { prisma: fakePrisma });
+stubModule('../utils/saveConsumableImage', {
+  saveConsumableImage: (id) => `/consumableImages/${id}/photo.png`,
+  deleteConsumableImage: (id) => deletedImages.push(id),
+});
+
+const consumableRoutes = require('../routes/consumableRoutes');
+
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+app.use('/api/consumables', consumableRoutes);
+app.use((err, req, res, next) => res.status(err.status || 500).json({ error: err.message }));
+
+let server, base;
+test.before(async () => {
+  await new Promise((r) => (server = app.listen(0, r)));
+  base = `http://127.0.0.1:${server.address().port}`;
+});
+test.after(() => server.close());
+
+const manager = `token=${jwt.sign({ userId: 1, role: 'lab_manager' }, process.env.JWT_SECRET)}`;
+const member = `token=${jwt.sign({ userId: 2, role: 'member' }, process.env.JWT_SECRET)}`;
+const call = (method, url, { as = manager, body } = {}) =>
+  fetch(base + url, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(as ? { Cookie: as } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+test('401 without login, 403 for a member who tries to change anything', async () => {
+  assert.equal((await call('GET', '/api/consumables', { as: null })).status, 401);
+  assert.equal((await call('POST', '/api/consumables', { as: member, body: { name: 'X', unit: 'ml' } })).status, 403);
+});
+
+test('POST 400 without name or unit', async () => {
+  const res = await call('POST', '/api/consumables', { body: { name: 'Ethanol' } });
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).error, 'name and unit are required');
+});
+
+test('POST 201 fills defaults for the optional fields', async () => {
+  const res = await call('POST', '/api/consumables', { body: { name: 'Agar', unit: 'g', expiryDate: '2027-03-15' } });
+  assert.equal(res.status, 201);
+  const saved = find((await res.json()).consumableId);
+  assert.equal(saved.currentStock, 0);
+  assert.equal(saved.reorderThreshold, 0);
+  assert.equal(saved.description, null);
+  assert.equal(saved.phValue, null);
+  assert.equal(saved.imageUrl, null);
+  assert.ok(saved.expiryDate instanceof Date);
+});
+
+test('GET returns Decimal columns as numbers, sorted by name', async () => {
+  db.rows.push({ consumableId: db.nextId++, name: 'Buffer', unit: 'ml', currentStock: '12.50', reorderThreshold: '5', phValue: '7.40' });
+  const rows = await (await call('GET', '/api/consumables', { as: member })).json();
+  const buffer = rows.find((r) => r.name === 'Buffer');
+  assert.deepEqual([buffer.currentStock, buffer.reorderThreshold, buffer.phValue], [12.5, 5, 7.4]);
+  assert.deepEqual(rows.map((r) => r.name), [...rows.map((r) => r.name)].sort());
+});
+
+test('PUT only changes the fields that were sent', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', { body: { name: 'NaCl', unit: 'g', currentStock: 100 } })).json();
+  const res = await call('PUT', `/api/consumables/${consumableId}`, { body: { currentStock: 80 } });
+  assert.equal(res.status, 200);
+  assert.equal(find(consumableId).currentStock, 80);
+  assert.equal(find(consumableId).name, 'NaCl');
+});
+
+test('PUT removes the uploaded photo when imageUrl changes, but not when it is left out', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', { body: { name: 'Gloves', unit: 'pieces' } })).json();
+  find(consumableId).imageUrl = '/consumableImages/x/photo.png';
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { name: 'Gloves M' } });
+  assert.ok(!deletedImages.includes(consumableId));
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { imageUrl: 'https://example.com/g.png' } });
+  assert.ok(deletedImages.includes(consumableId));
+});
+
+test('400 on a bad id and 404 on a missing item, for every :id route', async () => {
+  for (const [method, path] of [['PUT', ''], ['DELETE', ''], ['DELETE', '/image']]) {
+    assert.equal((await call(method, `/api/consumables/abc${path}`, { body: {} })).status, 400);
+    assert.equal((await call(method, `/api/consumables/999${path}`, { body: {} })).status, 404);
+  }
+});
+
+test('DELETE 204 removes the item and its photo', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', { body: { name: 'Tips', unit: 'pieces' } })).json();
+  assert.equal((await call('DELETE', `/api/consumables/${consumableId}`)).status, 204);
+  assert.equal(find(consumableId), undefined);
+  assert.ok(deletedImages.includes(consumableId));
+});
+
+test('PUT /:id/image stores the photo URL; DELETE /:id/image clears it', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', { body: { name: 'HCl', unit: 'ml' } })).json();
+  const upload = await fetch(`${base}/api/consumables/${consumableId}/image`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/png', Cookie: manager },
+    body: Buffer.from([1, 2, 3]),
+  });
+  assert.equal(upload.status, 200);
+  assert.equal(find(consumableId).imageUrl, `/consumableImages/${consumableId}/photo.png`);
+
+  assert.equal((await call('DELETE', `/api/consumables/${consumableId}/image`)).status, 200);
+  assert.equal(find(consumableId).imageUrl, null);
+});
