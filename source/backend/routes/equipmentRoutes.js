@@ -115,11 +115,11 @@ function toResponse(e) {
 // Allowed sort orders. The client sends a key, never a field name, so only these can be used.
 // name is the tie-breaker, so the order is the same every time and paging stays stable.
 const SORT_OPTIONS = {
-  name: [{ name: 'asc' }],
-  name_desc: [{ name: 'desc' }],
-  available_low: [{ quantityAvailable: 'asc' }, { name: 'asc' }],
-  available_high: [{ quantityAvailable: 'desc' }, { name: 'asc' }],
-  location: [{ location: 'asc' }, { name: 'asc' }],
+  name: [{ name: 'asc' }, { equipmentId: 'asc' }],
+  name_desc: [{ name: 'desc' }, { equipmentId: 'asc' }],
+  available_low: [{ quantityAvailable: 'asc' }, { name: 'asc' }, { equipmentId: 'asc' }],
+  available_high: [{ quantityAvailable: 'desc' }, { name: 'asc' }, { equipmentId: 'asc' }],
+  location: [{ location: 'asc' }, { name: 'asc' }, { equipmentId: 'asc' }],
 };
 
 // READ list
