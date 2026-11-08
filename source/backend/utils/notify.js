@@ -27,7 +27,7 @@ async function approverIds(db, exceptUserId) {
 
 /**
  * One notification for each user in `userIds`.
- * `target` is { requestId } or { labSessionId }: the table needs exactly one of them.
+ * `target` is { requestId }, { labSessionId } or { consumableId }: the table needs exactly one of them.
  */
 async function notifyUsers(db, userIds, { target, message, notifType }) {
   const ids = [...new Set(userIds)];

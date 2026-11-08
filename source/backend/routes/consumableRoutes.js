@@ -4,6 +4,8 @@ const { prisma } = require('../lib/prisma');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { saveConsumableImage, deleteConsumableImage } = require('../utils/saveConsumableImage');
 const { validateConsumableInput } = require('../utils/validateConsumable');
+const { becameLow, lowStockMessage } = require('../utils/lowStock');
+const { approverIds, notifyUsers } = require('../utils/notify');
 
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const rawImage = express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: IMAGE_MAX_BYTES });
@@ -139,7 +141,10 @@ router.post('/', requireAuth, canManage, async (req, res) => {
 // hazardIds / propertyIds, if sent, replace that whole list.
 router.put('/:id', requireAuth, canManage, async (req, res) => {
   const consumableId = parseId(req.params.id);
-  const before = await prisma.consumable.findUnique({ where: { consumableId }, select: { unit: true, imageUrl: true } });
+  const before = await prisma.consumable.findUnique({
+    where: { consumableId },
+    select: { unit: true, imageUrl: true, currentStock: true, reorderThreshold: true },
+  });
   if (!before) throw httpError(404, 'Consumable not found');
 
   // an item saved with an old free-text unit (e.g. "bottle") can still be edited without changing it
@@ -152,7 +157,16 @@ router.put('/:id', requireAuth, canManage, async (req, res) => {
   const consumable = await orNotFound(() =>
     prisma.$transaction(async (tx) => {
       await replaceLinks(tx, consumableId, ids);
-      return tx.consumable.update({ where: { consumableId }, data: fields });
+      const updated = await tx.consumable.update({ where: { consumableId }, data: fields });
+      // tell the lecturers and lab managers (not the person who made the edit) that it needs reordering
+      if (becameLow(before, updated)) {
+        await notifyUsers(tx, await approverIds(tx, req.user.userId), {
+          target: { consumableId },
+          message: lowStockMessage(updated),
+          notifType: 'low_stock',
+        });
+      }
+      return updated;
     }),
   );
   // a new or cleared imageUrl replaces an uploaded photo, so the old file is removed

@@ -12,6 +12,7 @@ const NOTIF_TYPES = ["status_change", "approval_needed", "new_comment", "reminde
 const include = {
   request: { select: { requestId: true, title: true, status: true } },
   session: { select: { labSessionId: true, name: true, status: true } },
+  consumable: { select: { consumableId: true, name: true } },
 };
 
 // ---------- validation ----------

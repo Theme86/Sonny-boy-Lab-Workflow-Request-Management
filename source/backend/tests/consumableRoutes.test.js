@@ -21,6 +21,13 @@ const db = {
   hazCon: [], // { consumableId, hazardId }
   propCon: [], // { consumableId, propertyId }
   usedByOthers: new Set(), // consumables a lab session or order points to
+  users: [
+    { userId: 1, role: 'lab_manager', active: true }, // the `manager` cookie below
+    { userId: 2, role: 'member', active: true },
+    { userId: 3, role: 'lecturer', active: true },
+    { userId: 4, role: 'lab_manager', active: false },
+  ],
+  notifications: [],
 };
 const deletedImages = [];
 const prismaError = (code) => Object.assign(new Error(code), { code });
@@ -94,6 +101,16 @@ const fakePrisma = {
   consumableProperty: listTable(db.properties, 'propertyId'),
   hazCon: joinTable('hazCon'),
   propCon: joinTable('propCon'),
+  // only what utils/notify.js uses
+  user: {
+    findMany: async ({ where }) =>
+      db.users.filter((u) => u.active === where.active && where.role.in.includes(u.role) && u.userId !== where.userId.not),
+  },
+  notification: {
+    createMany: async ({ data }) => {
+      db.notifications.push(...data);
+    },
+  },
 };
 
 function stubModule(relPath, exports) {
@@ -296,4 +313,33 @@ test('properties are saved, returned, replaced and checked like hazards', async 
 
   assert.equal((await call('DELETE', `/api/consumables/${consumableId}`)).status, 204);
   assert.deepEqual(propertyIdsOf(consumableId), []);
+});
+
+test('PUT that takes stock from normal to low tells the other active lecturers and lab managers', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', {
+    body: { name: 'Ethanol 70%', unit: 'ml', currentStock: 500, reorderThreshold: 200 },
+  })).json();
+  db.notifications.length = 0;
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { currentStock: 150 } });
+
+  assert.deepEqual(db.notifications.map((n) => n.userId), [3]); // not the editor (1), not a member (2), not inactive (4)
+  assert.deepEqual(db.notifications[0], {
+    userId: 3,
+    consumableId,
+    message: 'Ethanol 70% is low on stock: 150 ml left (reorder at 200 ml)',
+    notifType: 'low_stock',
+  });
+});
+
+test('no low-stock alert while it stays low, or when it is restocked', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', {
+    body: { name: 'Agar 2', unit: 'g', currentStock: 10, reorderThreshold: 50 },
+  })).json();
+  db.notifications.length = 0;
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { currentStock: 5 } });
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { currentStock: 500 } });
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { name: 'Agar 2 (renamed)' } });
+  assert.equal(db.notifications.length, 0);
 });
