@@ -1,10 +1,20 @@
 // lib/consumablesApi.ts — calls to /api/consumables.
 import { apiFetch } from '@/lib/api';
-import { fromApi, type ApiConsumable, type Consumable, type SavePayload } from '@/lib/consumables';
+import { fromApi, type ApiConsumable, type Consumable, type Hazard, type Property, type SavePayload } from '@/lib/consumables';
 
 export async function fetchConsumables(): Promise<Consumable[]> {
   const rows = await apiFetch<ApiConsumable[]>('/api/consumables');
   return rows.map(fromApi);
+}
+
+/** Every hazard that can be attached to a consumable. */
+export function fetchHazards() {
+  return apiFetch<Hazard[]>('/api/consumables/hazards');
+}
+
+/** Every property tag that can be attached to a consumable. */
+export function fetchProperties() {
+  return apiFetch<Property[]>('/api/consumables/properties');
 }
 
 export function saveConsumable(data: SavePayload, editingId?: number) {

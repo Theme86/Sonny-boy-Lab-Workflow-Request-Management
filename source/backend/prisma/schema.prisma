@@ -296,6 +296,8 @@ model PropEquip {
 
 model Hazard {
   hazardId    Int     @id @default(autoincrement()) @map("hazard_id")
+  // GHS pictogram code, e.g. "GHS02"
+  code        String? @unique @db.VarChar(10)
   name        String  @db.VarChar(150)
   description String? @db.VarChar(250)
 

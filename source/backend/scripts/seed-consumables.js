@@ -1,7 +1,8 @@
 // backend/scripts/seed-consumables.js
-// Fills the consumables table with sample chemicals and supplies for local testing.
-// Safe to run more than once: an item whose name already exists is overwritten with the values
-// in this file, so the sample data always matches this list. Other consumables are left alone.
+// Fills the hazards list (the 9 GHS pictograms), the property tags, and sample chemicals and supplies
+// for local testing. Safe to run more than once: a hazard (by code), property or consumable (by name)
+// that already exists is overwritten with the values in this file, so the sample data always matches.
+// Other consumables are left alone.
 //
 // Usage (from source/backend, with the database running):
 //   npm run seed:consumables
@@ -20,6 +21,60 @@ const image = (text) => `https://placehold.co/400x300?text=${encodeURIComponent(
 // สร้างลิงก์รูปจาก Wikimedia Commons (redirect ไปยัง thumbnail ขนาด 400px อัตโนมัติ)
 const commons = (file, width = 400) =>
   `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=${width}`;
+
+const HAZARDS = [
+  { code: 'GHS01', name: 'Explosive', description: 'Unstable explosives, self-reactive substances' },
+  { code: 'GHS02', name: 'Flammable', description: 'Flammable gases, liquids and solids' },
+  { code: 'GHS03', name: 'Oxidizer', description: 'Can cause or intensify fire' },
+  { code: 'GHS04', name: 'Compressed gas', description: 'Gas under pressure, may explode if heated' },
+  { code: 'GHS05', name: 'Corrosive', description: 'Causes severe skin burns and eye damage' },
+  { code: 'GHS06', name: 'Acute toxicity', description: 'Fatal or toxic if swallowed, inhaled or on skin' },
+  { code: 'GHS07', name: 'Irritant', description: 'Skin or eye irritation, harmful' },
+  { code: 'GHS08', name: 'Health hazard', description: 'Carcinogen, mutagen or organ toxicity' },
+  { code: 'GHS09', name: 'Environmental', description: 'Toxic to aquatic life' },
+];
+
+// GHS codes per sample consumable (by name); items not listed have no hazards
+const CONSUMABLE_HAZARDS = {
+  'Ethanol 95%': ['GHS02', 'GHS07'],
+  'Acetic Acid (Glacial)': ['GHS02', 'GHS05'],
+  Methanol: ['GHS02', 'GHS06', 'GHS08'],
+  'Hydrochloric Acid': ['GHS05', 'GHS07'],
+  'Sodium Hydroxide': ['GHS05'],
+  'Crystal Violet Stain': ['GHS05', 'GHS08', 'GHS09'],
+  'Hydrogen Peroxide 3%': ['GHS07'],
+  'Iodine Solution': ['GHS07'],
+};
+
+// storage / handling tags (consumable_property has no unique column, so these are matched by name)
+const PROPERTIES = [
+  { name: 'Light sensitive', description: 'Store in an amber bottle, away from light' },
+  { name: 'Keep refrigerated', description: 'Store at 2–8 °C' },
+  { name: 'Keep frozen', description: 'Store at -20 °C or below' },
+  { name: 'Hygroscopic', description: 'Absorbs moisture; keep tightly closed' },
+  { name: 'Volatile', description: 'Evaporates quickly; keep capped and use in a fume hood' },
+  { name: 'Sterile', description: 'Open only in a clean or sterile area' },
+  { name: 'Single use', description: 'Discard after one use' },
+];
+
+// property names per sample consumable (by name); items not listed have no properties
+const CONSUMABLE_PROPERTIES = {
+  'Agar Powder': ['Hygroscopic'],
+  'Ethanol 95%': ['Volatile'],
+  Glucose: ['Hygroscopic'],
+  'Nitrile Gloves (M)': ['Single use'],
+  'Pipette Tips 200 µl': ['Single use'],
+  'Phosphate Buffered Saline': ['Sterile'],
+  'Acetic Acid (Glacial)': ['Volatile'],
+  Methanol: ['Volatile'],
+  'Hydrochloric Acid': ['Volatile'],
+  'Sodium Hydroxide': ['Hygroscopic'],
+  'Petri Dish 90 mm': ['Sterile', 'Single use'],
+  'Hydrogen Peroxide 3%': ['Light sensitive'],
+  'LB Broth': ['Sterile', 'Keep refrigerated'],
+  'Trypsin-EDTA 0.25%': ['Sterile', 'Keep frozen'],
+  'Iodine Solution': ['Light sensitive'],
+};
 
 const CONSUMABLES = [
   // In stock
@@ -52,19 +107,56 @@ const CONSUMABLES = [
   { name: 'Iodine Solution', description: "Lugol's iodine, for starch test", unit: 'ml', currentStock: 120, reorderThreshold: 50, phValue: null, expiryDate: daysFromToday(-60), imageUrl: commons("Thiodine_Lugol's_Solution_of_Iodine.jpg") },
 ];
 
+async function seedHazards() {
+  const idByCode = {};
+  for (const { code, ...rest } of HAZARDS) {
+    const hazard = await prisma.hazard.upsert({ where: { code }, create: { code, ...rest }, update: rest });
+    idByCode[code] = hazard.hazardId;
+  }
+  console.log(`Hazards seeded: ${HAZARDS.length}.`);
+  return idByCode;
+}
+
+async function seedProperties() {
+  const idByName = {};
+  for (const { name, description } of PROPERTIES) {
+    const existing = await prisma.consumableProperty.findFirst({ where: { name }, select: { propertyId: true } });
+    const property = existing
+      ? await prisma.consumableProperty.update({ where: { propertyId: existing.propertyId }, data: { description } })
+      : await prisma.consumableProperty.create({ data: { name, description } });
+    idByName[name] = property.propertyId;
+  }
+  console.log(`Properties seeded: ${PROPERTIES.length}.`);
+  return idByName;
+}
+
+// replaces the item's links in one join table (haz_con or prop_con) with the given ids
+async function replaceLinks(join, key, consumableId, ids) {
+  await prisma[join].deleteMany({ where: { consumableId } });
+  if (ids.length) await prisma[join].createMany({ data: ids.map((id) => ({ consumableId, [key]: id })) });
+}
+
 async function main() {
+  const hazardIds = await seedHazards();
+  const propertyIds = await seedProperties();
   let added = 0;
   let updated = 0;
 
   for (const item of CONSUMABLES) {
     const existing = await prisma.consumable.findFirst({ where: { name: item.name }, select: { consumableId: true } });
+    let consumableId;
     if (existing) {
-      await prisma.consumable.update({ where: { consumableId: existing.consumableId }, data: item });
+      consumableId = existing.consumableId;
+      await prisma.consumable.update({ where: { consumableId }, data: item });
       updated++;
     } else {
-      await prisma.consumable.create({ data: item });
+      consumableId = (await prisma.consumable.create({ data: item })).consumableId;
       added++;
     }
+    const hazards = (CONSUMABLE_HAZARDS[item.name] ?? []).map((code) => hazardIds[code]);
+    const properties = (CONSUMABLE_PROPERTIES[item.name] ?? []).map((name) => propertyIds[name]);
+    await replaceLinks('hazCon', 'hazardId', consumableId, hazards);
+    await replaceLinks('propCon', 'propertyId', consumableId, properties);
   }
 
   console.log(`Consumables seeded: ${added} added, ${updated} updated.`);

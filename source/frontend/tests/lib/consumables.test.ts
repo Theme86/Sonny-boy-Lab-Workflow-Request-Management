@@ -35,11 +35,12 @@ describe('fromApi', () => {
     expect(c.expiryDate).toBe('2027-03-15');
   });
 
-  test('keeps a missing pH and expiry as null and defaults hazards to []', () => {
+  test('keeps a missing pH and expiry as null and defaults hazards and properties to []', () => {
     const c = fromApi({ ...row, phValue: null, expiryDate: null });
     expect(c.phValue).toBeNull();
     expect(c.expiryDate).toBeNull();
     expect(c.hazards).toEqual([]);
+    expect(c.properties).toEqual([]);
   });
 
   test('pH 0 stays 0, not null', () => {

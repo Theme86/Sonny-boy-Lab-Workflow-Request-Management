@@ -7,37 +7,93 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 
-const db = { rows: [], nextId: 1 };
+const db = {
+  rows: [],
+  nextId: 1,
+  hazards: [
+    { hazardId: 1, code: 'GHS02', name: 'Flammable', description: null },
+    { hazardId: 2, code: 'GHS05', name: 'Corrosive', description: null },
+  ],
+  properties: [
+    { propertyId: 1, name: 'Light sensitive', description: null },
+    { propertyId: 2, name: 'Keep refrigerated', description: null },
+  ],
+  hazCon: [], // { consumableId, hazardId }
+  propCon: [], // { consumableId, propertyId }
+  usedByOthers: new Set(), // consumables a lab session or order points to
+};
 const deletedImages = [];
-const notFound = () => Object.assign(new Error('Record not found'), { code: 'P2025' });
+const prismaError = (code) => Object.assign(new Error(code), { code });
 const find = (id) => db.rows.find((r) => r.consumableId === id);
 
+// join table name -> the list it points to, the id column, and the relation field on a join row
+const JOINS = {
+  hazCon: { list: () => db.hazards, key: 'hazardId', relation: 'hazard', field: 'hazards' },
+  propCon: { list: () => db.properties, key: 'propertyId', relation: 'property', field: 'properties' },
+};
+const linkedIds = (join, id) => db[join].filter((l) => l.consumableId === id).map((l) => l[JOINS[join].key]).sort();
+const hazardIdsOf = (id) => linkedIds('hazCon', id);
+const propertyIdsOf = (id) => linkedIds('propCon', id);
+
+function withLinks(row) {
+  const out = { ...row };
+  for (const [join, j] of Object.entries(JOINS)) {
+    out[j.field] = linkedIds(join, row.consumableId).map((id) => ({ [j.relation]: j.list().find((x) => x[j.key] === id) }));
+  }
+  return out;
+}
+
+const joinTable = (join) => ({
+  deleteMany: async ({ where }) => {
+    db[join] = db[join].filter((l) => l.consumableId !== where.consumableId);
+  },
+  createMany: async ({ data }) => {
+    db[join].push(...data);
+  },
+});
+const listTable = (list, key) => ({
+  findMany: async () => list,
+  count: async ({ where }) => list.filter((x) => where[key].in.includes(x[key])).length,
+});
+
 const fakePrisma = {
+  $transaction: async (fn) => fn(fakePrisma),
   consumable: {
     findMany: async ({ where }) =>
-      db.rows.filter((r) => !where || r.name.includes(where.name.contains)).sort((a, b) => a.name.localeCompare(b.name)),
+      db.rows
+        .filter((r) => !where || r.name.includes(where.name.contains))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(withLinks),
     // a copy, like real Prisma, so a later update doesn't change what was read before
     findUnique: async ({ where }) => {
       const row = find(where.consumableId);
       return row ? { ...row } : null;
     },
-    create: async ({ data }) => {
+    create: async ({ data: { hazards, properties, ...data } }) => {
       const row = { consumableId: db.nextId++, ...data };
       db.rows.push(row);
+      for (const link of hazards?.create ?? []) db.hazCon.push({ consumableId: row.consumableId, ...link });
+      for (const link of properties?.create ?? []) db.propCon.push({ consumableId: row.consumableId, ...link });
       return row;
     },
     update: async ({ where, data }) => {
       const row = find(where.consumableId);
-      if (!row) throw notFound();
+      if (!row) throw prismaError('P2025');
       return Object.assign(row, data);
     },
     delete: async ({ where }) => {
       const row = find(where.consumableId);
-      if (!row) throw notFound();
+      if (!row) throw prismaError('P2025');
+      const linked = Object.keys(JOINS).some((join) => db[join].some((l) => l.consumableId === row.consumableId));
+      if (linked || db.usedByOthers.has(row.consumableId)) throw prismaError('P2003');
       db.rows = db.rows.filter((r) => r !== row);
       return row;
     },
   },
+  hazard: listTable(db.hazards, 'hazardId'),
+  consumableProperty: listTable(db.properties, 'propertyId'),
+  hazCon: joinTable('hazCon'),
+  propCon: joinTable('propCon'),
 };
 
 function stubModule(relPath, exports) {
@@ -79,10 +135,30 @@ test('401 without login, 403 for a member who tries to change anything', async (
   assert.equal((await call('POST', '/api/consumables', { as: member, body: { name: 'X', unit: 'ml' } })).status, 403);
 });
 
-test('POST 400 without name or unit', async () => {
-  const res = await call('POST', '/api/consumables', { body: { name: 'Ethanol' } });
+test('POST 400 lists every invalid field and saves nothing', async () => {
+  const before = db.rows.length;
+  const res = await call('POST', '/api/consumables', { body: { name: 'Ethanol', currentStock: -5, phValue: 20 } });
   assert.equal(res.status, 400);
-  assert.equal((await res.json()).error, 'name and unit are required');
+  const json = await res.json();
+  assert.equal(json.error, 'Validation failed');
+  assert.deepEqual(Object.keys(json.details).sort(), ['currentStock', 'phValue', 'unit']);
+  assert.equal(db.rows.length, before);
+});
+
+test('PUT 400 on an invalid field, item unchanged', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', { body: { name: 'KCl', unit: 'g', currentStock: 10 } })).json();
+  const res = await call('PUT', `/api/consumables/${consumableId}`, { body: { currentStock: -1 } });
+  assert.equal(res.status, 400);
+  assert.ok((await res.json()).details.currentStock);
+  assert.equal(find(consumableId).currentStock, 10);
+});
+
+test('PUT keeps working for an old item with a free-text unit', async () => {
+  db.rows.push({ consumableId: db.nextId, name: 'Old reagent', unit: 'bottle', currentStock: 2, reorderThreshold: 1 });
+  const consumableId = db.nextId++;
+  const res = await call('PUT', `/api/consumables/${consumableId}`, { body: { unit: 'bottle', currentStock: 3 } });
+  assert.equal(res.status, 200);
+  assert.equal(find(consumableId).currentStock, 3);
 });
 
 test('POST 201 fills defaults for the optional fields', async () => {
@@ -150,4 +226,74 @@ test('PUT /:id/image stores the photo URL; DELETE /:id/image clears it', async (
 
   assert.equal((await call('DELETE', `/api/consumables/${consumableId}/image`)).status, 200);
   assert.equal(find(consumableId).imageUrl, null);
+});
+
+test('GET /hazards lists the hazards that can be chosen', async () => {
+  const hazards = await (await call('GET', '/api/consumables/hazards', { as: member })).json();
+  assert.deepEqual(hazards.map((h) => h.code), ['GHS02', 'GHS05']);
+});
+
+test('POST saves the chosen hazards and GET returns them as a plain list', async () => {
+  const res = await call('POST', '/api/consumables', { body: { name: 'Methanol', unit: 'l', hazardIds: [1, 2] } });
+  assert.equal(res.status, 201);
+  const { consumableId } = await res.json();
+  assert.deepEqual(hazardIdsOf(consumableId), [1, 2]);
+
+  const rows = await (await call('GET', '/api/consumables', { as: member })).json();
+  assert.deepEqual(rows.find((r) => r.consumableId === consumableId).hazards.map((h) => h.code), ['GHS02', 'GHS05']);
+});
+
+test('POST/PUT 400 when a hazard id does not exist', async () => {
+  const res = await call('POST', '/api/consumables', { body: { name: 'X', unit: 'ml', hazardIds: [99] } });
+  assert.equal(res.status, 400);
+  assert.ok((await res.json()).details.hazardIds);
+});
+
+test('PUT replaces the hazard list when hazardIds is sent, keeps it otherwise', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', { body: { name: 'HCl 1M', unit: 'ml', hazardIds: [2] } })).json();
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { currentStock: 5 } });
+  assert.deepEqual(hazardIdsOf(consumableId), [2]);
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { hazardIds: [1] } });
+  assert.deepEqual(hazardIdsOf(consumableId), [1]);
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { hazardIds: [] } });
+  assert.deepEqual(hazardIdsOf(consumableId), []);
+});
+
+test('DELETE removes hazard links first; 409 when a lab session or order still uses the item', async () => {
+  const { consumableId } = await (await call('POST', '/api/consumables', { body: { name: 'Acetone', unit: 'l', hazardIds: [1] } })).json();
+  assert.equal((await call('DELETE', `/api/consumables/${consumableId}`)).status, 204);
+  assert.deepEqual(hazardIdsOf(consumableId), []);
+
+  const used = await (await call('POST', '/api/consumables', { body: { name: 'Agarose', unit: 'g' } })).json();
+  db.usedByOthers.add(used.consumableId);
+  assert.equal((await call('DELETE', `/api/consumables/${used.consumableId}`)).status, 409);
+  assert.ok(find(used.consumableId));
+});
+
+test('GET /properties lists the property tags that can be chosen', async () => {
+  const properties = await (await call('GET', '/api/consumables/properties', { as: member })).json();
+  assert.deepEqual(properties.map((p) => p.name), ['Light sensitive', 'Keep refrigerated']);
+});
+
+test('properties are saved, returned, replaced and checked like hazards', async () => {
+  const res = await call('POST', '/api/consumables', { body: { name: 'Silver nitrate', unit: 'g', propertyIds: [1], hazardIds: [2] } });
+  const { consumableId } = await res.json();
+  assert.deepEqual(propertyIdsOf(consumableId), [1]);
+
+  const rows = await (await call('GET', '/api/consumables', { as: member })).json();
+  assert.deepEqual(rows.find((r) => r.consumableId === consumableId).properties, [{ propertyId: 1, name: 'Light sensitive', description: null }]);
+
+  await call('PUT', `/api/consumables/${consumableId}`, { body: { propertyIds: [2] } });
+  assert.deepEqual(propertyIdsOf(consumableId), [2]);
+  assert.deepEqual(hazardIdsOf(consumableId), [2]); // hazards not sent, so left alone
+
+  const bad = await call('PUT', `/api/consumables/${consumableId}`, { body: { propertyIds: [99] } });
+  assert.equal(bad.status, 400);
+  assert.ok((await bad.json()).details.propertyIds);
+
+  assert.equal((await call('DELETE', `/api/consumables/${consumableId}`)).status, 204);
+  assert.deepEqual(propertyIdsOf(consumableId), []);
 });

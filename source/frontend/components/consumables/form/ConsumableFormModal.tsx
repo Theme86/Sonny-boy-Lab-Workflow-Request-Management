@@ -1,5 +1,8 @@
 // components/consumables/form/ConsumableFormModal.tsx — the add / edit pop-up.
-import { unitLabel, unitsWith, type Consumable } from '@/lib/consumables';
+import { unitLabel, unitsWith, type Consumable, type Hazard, type Property } from '@/lib/consumables';
+import { fetchHazards, fetchProperties } from '@/lib/consumablesApi';
+import { HazardDiamond } from '../ui/Cells';
+import { ChipPicker, type ChipOption } from './ChipPicker';
 import { Field, QuantityInput, Section } from './FormFields';
 import { Icon } from '../ui/icons';
 import { Modal } from '../ui/Modal';
@@ -8,6 +11,10 @@ import { btn, inputClass } from '../ui/styles';
 import { useConsumableForm, type SaveHandler } from './useConsumableForm';
 
 type Props = { initial?: Consumable; onClose: () => void; onSave: SaveHandler };
+
+const hazardOption = (h: Hazard): ChipOption => ({ id: h.hazardId, label: h.name, hint: h.description, icon: <HazardDiamond code={h.code} /> });
+const propertyOption = (p: Property): ChipOption => ({ id: p.propertyId, label: p.name, hint: p.description });
+const NOT_SEEDED = 'Nothing set up yet. Run npm run seed:consumables in the backend.';
 
 export function ConsumableFormModal({ initial, onClose, onSave }: Props) {
   const { form, errors, set, photo, saving, saveError, submit } = useConsumableForm(initial, onSave);
@@ -114,10 +121,36 @@ export function ConsumableFormModal({ initial, onClose, onSave }: Props) {
                 className={inputClass(Boolean(errors.phValue))}
               />
             </Field>
-            <Field label="Expiry date" help="Leave empty if it does not expire.">
+            <Field label="Expiry date" error={errors.expiryDate} help="Leave empty if it does not expire.">
               <input type="date" value={form.expiryDate} onChange={(e) => set('expiryDate', e.target.value)} className={inputClass()} />
             </Field>
           </div>
+        </Section>
+
+        <Section title="Hazards (GHS)">
+          <ChipPicker
+            label="Hazards"
+            load={fetchHazards}
+            toOption={hazardOption}
+            selected={form.hazardIds}
+            onChange={(ids) => set('hazardIds', ids)}
+            error={errors.hazardIds}
+            emptyText={NOT_SEEDED}
+            tone="red"
+          />
+        </Section>
+
+        <Section title="Properties">
+          <ChipPicker
+            label="Properties"
+            load={fetchProperties}
+            toOption={propertyOption}
+            selected={form.propertyIds}
+            onChange={(ids) => set('propertyIds', ids)}
+            error={errors.propertyIds}
+            emptyText={NOT_SEEDED}
+            tone="accent"
+          />
         </Section>
       </form>
     </Modal>

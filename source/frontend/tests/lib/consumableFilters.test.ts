@@ -6,7 +6,7 @@ const TODAY = new Date('2026-11-08T10:00:00');
 
 const item = (o: Partial<Consumable>): Consumable => ({
   consumableId: 0, name: '', description: null, unit: 'ml', currentStock: 100, reorderThreshold: 10,
-  phValue: null, expiryDate: null, imageUrl: null, hazards: [], ...o,
+  phValue: null, expiryDate: null, imageUrl: null, hazards: [], properties: [], ...o,
 });
 
 const items = [

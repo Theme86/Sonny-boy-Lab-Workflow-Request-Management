@@ -12,7 +12,11 @@ const UNIT_LABELS: Record<string, string> = {
 export const EXPIRY_SOON_DAYS = 30;
 const DAY_MS = 86_400_000;
 
-export type Hazard = { hazardId: number; code: string; name: string };
+/** A GHS hazard; `code` is the pictogram code, e.g. "GHS02" (may be missing on hazards added by hand). */
+export type Hazard = { hazardId: number; code: string | null; name: string; description?: string | null };
+
+/** A storage / handling tag, e.g. "Light sensitive". */
+export type Property = { propertyId: number; name: string; description?: string | null };
 
 export type Consumable = {
   consumableId: number;
@@ -25,13 +29,15 @@ export type Consumable = {
   expiryDate: string | null; // "YYYY-MM-DD"
   imageUrl: string | null;
   hazards: Hazard[];
+  properties: Property[];
 };
 
-export type ApiConsumable = Omit<Consumable, 'currentStock' | 'reorderThreshold' | 'phValue' | 'hazards'> & {
+export type ApiConsumable = Omit<Consumable, 'currentStock' | 'reorderThreshold' | 'phValue' | 'hazards' | 'properties'> & {
   currentStock: string | number;
   reorderThreshold: string | number;
   phValue: string | number | null;
   hazards?: Hazard[];
+  properties?: Property[];
 };
 
 export type SavePayload = {
@@ -43,6 +49,8 @@ export type SavePayload = {
   phValue: number | null;
   expiryDate: string | null;
   imageUrl: string | null;
+  hazardIds: number[];
+  propertyIds: number[];
 };
 
 // Prisma Decimal arrives as a string and dates as full ISO strings.
@@ -54,6 +62,7 @@ export function fromApi(r: ApiConsumable): Consumable {
     phValue: r.phValue == null ? null : Number(r.phValue),
     expiryDate: r.expiryDate ? r.expiryDate.slice(0, 10) : null,
     hazards: r.hazards ?? [],
+    properties: r.properties ?? [],
   };
 }
 

@@ -1,5 +1,6 @@
 // components/consumables/form/useConsumableForm.ts — state and submit logic of the add/edit form.
 import { useState, type FormEvent } from 'react';
+import { ApiError } from '@/lib/api';
 import { hasErrors, toForm, toPayload, validateForm, type FormErrors, type FormState } from '@/lib/consumableForm';
 import type { Consumable, SavePayload } from '@/lib/consumables';
 import type { PhotoChange } from '../useConsumables';
@@ -31,7 +32,10 @@ export function useConsumableForm(initial: Consumable | undefined, onSave: SaveH
       // on success the parent closes the form, so `saving` only needs resetting on failure
       await onSave(toPayload(form, Boolean(photo.file)), { file: photo.file, remove: photo.remove });
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Something went wrong');
+      // the backend's "Validation failed" answer names the fields, so show each message under its field
+      const fieldErrors = err instanceof ApiError ? err.details : undefined;
+      if (fieldErrors) setErrors(fieldErrors);
+      setSaveError(fieldErrors ? 'Please fix the highlighted fields.' : err instanceof Error ? err.message : 'Something went wrong');
       setSaving(false);
     }
   }
