@@ -34,7 +34,7 @@ export function TopBar() {
           <ThemeToggle />
           {user && <NotificationBell />}
           {user && <ProfileMenu />}
-          {user && <ProfileMenu />}
+          
         </div>
       </div>
       {hasNav && <MobileNav links={links} groups={groups} pathname={pathname} />}
