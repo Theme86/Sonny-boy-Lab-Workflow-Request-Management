@@ -1,6 +1,7 @@
 // components/consumables/form/ConsumableFormModal.tsx — the add / edit pop-up.
 import { unitLabel, unitsWith, type Consumable } from '@/lib/consumables';
 import { Field, QuantityInput, Section } from './FormFields';
+import { HazardPicker } from './HazardPicker';
 import { Icon } from '../ui/icons';
 import { Modal } from '../ui/Modal';
 import { PhotoField } from './PhotoField';
@@ -118,6 +119,10 @@ export function ConsumableFormModal({ initial, onClose, onSave }: Props) {
               <input type="date" value={form.expiryDate} onChange={(e) => set('expiryDate', e.target.value)} className={inputClass()} />
             </Field>
           </div>
+        </Section>
+
+        <Section title="Hazards (GHS)">
+          <HazardPicker selected={form.hazardIds} error={errors.hazardIds} onChange={(ids) => set('hazardIds', ids)} />
         </Section>
       </form>
     </Modal>

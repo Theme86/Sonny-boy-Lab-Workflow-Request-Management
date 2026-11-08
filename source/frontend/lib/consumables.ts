@@ -12,7 +12,8 @@ const UNIT_LABELS: Record<string, string> = {
 export const EXPIRY_SOON_DAYS = 30;
 const DAY_MS = 86_400_000;
 
-export type Hazard = { hazardId: number; code: string; name: string };
+/** A GHS hazard; `code` is the pictogram code, e.g. "GHS02" (may be missing on hazards added by hand). */
+export type Hazard = { hazardId: number; code: string | null; name: string; description?: string | null };
 
 export type Consumable = {
   consumableId: number;
@@ -43,6 +44,7 @@ export type SavePayload = {
   phValue: number | null;
   expiryDate: string | null;
   imageUrl: string | null;
+  hazardIds: number[];
 };
 
 // Prisma Decimal arrives as a string and dates as full ISO strings.

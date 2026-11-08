@@ -6,9 +6,17 @@ import { ConsumableFormModal } from '@/components/consumables/form/ConsumableFor
 import { ApiError } from '@/lib/api';
 import type { Consumable } from '@/lib/consumables';
 
+vi.mock('@/lib/consumablesApi', () => ({
+  fetchHazards: () =>
+    Promise.resolve([
+      { hazardId: 2, code: 'GHS02', name: 'Flammable' },
+      { hazardId: 7, code: 'GHS07', name: 'Irritant' },
+    ]),
+}));
+
 const item: Consumable = {
   consumableId: 7, name: 'Ethanol', description: null, unit: 'ml', currentStock: 100, reorderThreshold: 20,
-  phValue: null, expiryDate: null, imageUrl: null, hazards: [],
+  phValue: null, expiryDate: null, imageUrl: null, hazards: [{ hazardId: 2, code: 'GHS02', name: 'Flammable' }],
 };
 
 // initial: null opens the "Add" form; leaving it out edits `item`
@@ -50,4 +58,17 @@ test('sends the edited values as numbers', async () => {
     expect.objectContaining({ name: 'Ethanol', unit: 'ml', currentStock: 100, reorderThreshold: 20, phValue: null }),
     { file: null, remove: false },
   );
+});
+
+test('shows the item\'s hazards as selected and sends the new choice', async () => {
+  const onSave = renderForm();
+  const flammable = await screen.findByRole('button', { name: /Flammable/ });
+  const irritant = screen.getByRole('button', { name: /Irritant/ });
+  expect(flammable).toHaveAttribute('aria-pressed', 'true');
+  expect(irritant).toHaveAttribute('aria-pressed', 'false');
+
+  await userEvent.click(flammable);
+  await userEvent.click(irritant);
+  await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ hazardIds: [7] }), expect.anything());
 });

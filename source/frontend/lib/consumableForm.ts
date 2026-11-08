@@ -13,6 +13,7 @@ export type FormState = {
   phValue: string;
   expiryDate: string;
   imageUrl: string;
+  hazardIds: number[];
 };
 export type FormErrors = Partial<Record<keyof FormState, string>>;
 
@@ -26,6 +27,7 @@ export function toForm(c?: Consumable): FormState {
     phValue: c?.phValue != null ? String(c.phValue) : '',
     expiryDate: c?.expiryDate ?? '',
     imageUrl: c?.imageUrl ?? '',
+    hazardIds: c?.hazards.map((h) => h.hazardId) ?? [],
   };
 }
 
@@ -60,6 +62,7 @@ export function toPayload(f: FormState, hasPhotoFile: boolean): SavePayload {
     phValue: f.phValue === '' ? null : Number(f.phValue),
     expiryDate: f.expiryDate || null,
     imageUrl: hasPhotoFile ? null : f.imageUrl.trim() || null,
+    hazardIds: f.hazardIds,
   };
 }
 

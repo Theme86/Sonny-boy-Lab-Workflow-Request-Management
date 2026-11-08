@@ -3,13 +3,13 @@ import { useState, type ReactNode } from 'react';
 import { fmtNum, formatDate, unitLabel, type Consumable } from '@/lib/consumables';
 import { ui } from '@/lib/ui';
 import { ExpiryBadge, StockBadge } from '../ui/Badges';
-import { StockCell } from '../ui/Cells';
+import { HazardDiamond, StockCell } from '../ui/Cells';
 import { Icon, IconButton } from '../ui/icons';
 import { btn } from '../ui/styles';
 import { Thumb } from '../ui/Thumb';
 import { useOverlay } from '../ui/useOverlay';
 
-// Only Overview has data; the others wait for hazards / properties / usage / orders in the backend.
+// Properties / Usage / Orders wait for those relations in the backend.
 const TABS = ['Overview', 'Hazards', 'Properties', 'Usage', 'Orders'] as const;
 type Tab = (typeof TABS)[number];
 
@@ -37,6 +37,21 @@ function Overview({ item }: { item: Consumable }) {
         <StockCell c={item} />
       </div>
     </div>
+  );
+}
+
+function Hazards({ item }: { item: Consumable }) {
+  if (!item.hazards.length) return <p className={`py-6 text-center text-sm ${ui.muted}`}>No hazards recorded.</p>;
+  return (
+    <ul className={`divide-y rounded-lg border ${ui.border} divide-vl-line`}>
+      {item.hazards.map((h) => (
+        <li key={h.hazardId} className="flex items-center gap-3 px-3 py-2.5">
+          <HazardDiamond code={h.code} />
+          <span className="text-sm font-medium">{h.name}</span>
+          {h.code && <span className={`ml-auto text-xs ${ui.muted}`}>{h.code}</span>}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -108,7 +123,9 @@ export function DetailDrawer({ item, canManage, onClose, onEdit, onDelete, onPre
             </div>
           </div>
           <TabBar tab={tab} onTab={setTab} />
-          <div className="px-6 py-5">{tab === 'Overview' ? <Overview item={item} /> : <NotConnectedYet />}</div>
+          <div className="px-6 py-5">
+            {tab === 'Overview' ? <Overview item={item} /> : tab === 'Hazards' ? <Hazards item={item} /> : <NotConnectedYet />}
+          </div>
         </div>
 
         {canManage && (

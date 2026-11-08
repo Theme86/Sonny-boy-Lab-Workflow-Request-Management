@@ -38,21 +38,24 @@ export function ExpiryCell({ c }: { c: Consumable }) {
   );
 }
 
-function HazardDiamond({ code }: { code: string }) {
+/** Red GHS-style diamond with the last two digits of the code, or "!" for a hazard without a code. */
+export function HazardDiamond({ code }: { code: string | null }) {
   return (
     <span className="grid h-6 w-6 shrink-0 place-items-center">
       <span className="grid h-[17px] w-[17px] rotate-45 place-items-center border-2 border-red-600 bg-white">
-        <span className="-rotate-45 text-[8px] font-bold leading-none text-gray-900">{code.slice(-2)}</span>
+        <span className="-rotate-45 text-[8px] font-bold leading-none text-gray-900">{code ? code.slice(-2) : '!'}</span>
       </span>
     </span>
   );
 }
 
+export const hazardLabel = (h: Hazard) => (h.code ? `${h.code} ${h.name}` : h.name);
+
 export function HazardPills({ hazards, max = 3 }: { hazards: Hazard[]; max?: number }) {
   if (!hazards.length) return <span className={`text-sm ${ui.muted}`}>—</span>;
   const extra = hazards.length - max;
   return (
-    <div className="flex items-center" title={hazards.map((h) => `${h.code} ${h.name}`).join(', ')}>
+    <div className="flex items-center" title={hazards.map(hazardLabel).join(', ')}>
       {hazards.slice(0, max).map((h) => (
         <HazardDiamond key={h.hazardId} code={h.code} />
       ))}
