@@ -2,8 +2,9 @@
 // Click the backdrop, click the X, or press Esc to close.
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { CloseIcon } from '@/components/equipmentIcons';
+import { useDialogBehavior } from '@/hooks/equipment/useDialogBehavior';
 
 type Props = {
   /** full photo address (already resolved with imageUrl()) */
@@ -14,29 +15,7 @@ type Props = {
 
 export function EquipmentLightbox({ src, name, onClose }: Props) {
   const closeButton = useRef<HTMLButtonElement>(null);
-  // the latest onClose for the key handler, so the listener is only registered once
-  const closeRef = useRef(onClose);
-  useEffect(() => {
-    closeRef.current = onClose;
-  });
-
-  // While open: lock page scrolling, focus the close button, close on Esc, and give focus back afterwards.
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    closeButton.current?.focus();
-
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeRef.current();
-    }
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previousOverflow;
-      previouslyFocused?.focus?.();
-    };
-  }, []);
+  useDialogBehavior(closeButton, onClose);
 
   return (
     <div
