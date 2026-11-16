@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { prisma } = require('../lib/prisma');
 const { requireAuth, requireActiveUser } = require('../middleware/auth');
-const { validateRequestInput, REQUEST_TYPES, REQUEST_STATUSES } = require('../utils/validateRequest');
+const { validateRequestInput, REQUEST_TYPES, REQUEST_STATUSES, INDUSTRY_SUBMITTER_ROLES } = require('../utils/validateRequest');
 const {
   STAFF_ROLES,
   isStaff,
@@ -12,6 +12,8 @@ const {
   humanize,
 } = require('../utils/requestStatus');
 const { approverIds, notifyUsers } = require('../utils/notify');
+const { RESTRICTED, RESTRICTED_MESSAGE, isRestricted, canView, withVisibility } = require('../utils/requestVisibility');
+const { logRestrictedAccess } = require('../utils/restrictedAccessLog');
 
 // requireActiveUser re-reads the role from the database, so a role change
 // (or a disabled account) applies immediately instead of when the login token expires.
@@ -23,10 +25,13 @@ const listInclude = {
   requester: { select: userSelect },
   assignee: { select: userSelect },
   equipment: { select: { equipmentId: true, name: true } },
+  // only the level (for the "Restricted" badge), never the partner's details
+  industryDetail: { select: { confidentiality: true } },
 };
 
 const detailInclude = {
   ...listInclude,
+  industryDetail: true,
   accessDetail: true,
   reservationDetail: true,
   consumableOrderItems: {
@@ -42,6 +47,9 @@ const parseId = (value) => {
   const n = Number(value);
   return Number.isInteger(n) && n > 0 ? n : null;
 };
+
+// 403 for a restricted request this person may not see (US-8: "denied, with an access-restricted message")
+const denyRestricted = (res) => res.status(403).json({ error: RESTRICTED_MESSAGE, restricted: true });
 
 const staffOnly = (req, res, message) => {
   if (isStaff(req.user.role)) return false;
@@ -64,6 +72,10 @@ router.post('/', ...auth, async (req, res) => {
     }
   }
 
+  if (data.industry && !INDUSTRY_SUBMITTER_ROLES.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Only lecturers and the lab manager can submit an industry collaboration request' });
+  }
+
   const userId = req.user.userId;
 
   // Request + first status-history row must succeed or fail together
@@ -77,6 +89,7 @@ router.post('/', ...auth, async (req, res) => {
         priority: data.priority,
         equipmentId: data.equipmentId,
         ...(data.access && { accessDetail: { create: data.access } }),
+        ...(data.industry && { industryDetail: { create: data.industry } }),
       },
       include: detailInclude,
     });
@@ -85,8 +98,10 @@ router.post('/', ...auth, async (req, res) => {
       data: { requestId: request.requestId, oldStatus: null, newStatus: 'open', changedBy: userId },
     });
 
-    // ask the lecturers and lab managers to look at it (not the person who submitted it)
-    await notifyUsers(tx, await approverIds(tx, userId), {
+    // ask the lecturers and lab managers to look at it (not the person who submitted it).
+    // A restricted request is only for the Lab Manager: other lecturers may not see it (SRS-16).
+    const roles = data.industry?.confidentiality === RESTRICTED ? ['lab_manager'] : undefined;
+    await notifyUsers(tx, await approverIds(tx, userId, roles), {
       target: { requestId: request.requestId },
       message: `New ${humanize(data.type)} request needs review: "${data.title}"`,
       notifType: 'approval_needed',
@@ -104,7 +119,7 @@ router.get('/', ...auth, async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
 
-  const where = {};
+  let where = {};
   if (!isStaff(req.user.role) || mine === 'true') where.requesterId = req.user.userId;
 
   if (status !== undefined && status !== '') {
@@ -115,6 +130,7 @@ router.get('/', ...auth, async (req, res) => {
     if (!REQUEST_TYPES.includes(type)) return res.status(400).json({ error: 'Invalid type filter' });
     where.type = type;
   }
+  where = withVisibility(where, req.user); // restricted requests of other people stay out of the list (SRS-16)
 
   const [items, total] = await Promise.all([
     prisma.request.findMany({
@@ -151,9 +167,14 @@ router.get('/:id', ...auth, async (req, res) => {
   const request = await prisma.request.findUnique({ where: { requestId }, include: detailInclude });
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
+  if (!canView(req.user, request)) return denyRestricted(res);
+
   if (request.requesterId !== req.user.userId && !isStaff(req.user.role)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
+
+  // SRS-17: remember who opened a restricted request
+  if (isRestricted(request)) await logRestrictedAccess(prisma, requestId, req.user.userId);
 
   res.json({ request, allowedStatuses: allowedStatusesFor(request.status, req.user.role) });
 });
@@ -173,9 +194,13 @@ router.patch('/:id/status', ...auth, async (req, res) => {
 
   const current = await prisma.request.findUnique({
     where: { requestId },
-    select: { requestId: true, status: true, requesterId: true, title: true },
+    select: {
+      requestId: true, status: true, requesterId: true, title: true, assignedTo: true,
+      industryDetail: { select: { confidentiality: true } },
+    },
   });
   if (!current) return res.status(404).json({ error: 'Request not found' });
+  if (!canView(req.user, current)) return denyRestricted(res);
 
   if (!canTransition(current.status, next)) {
     return res.status(409).json({
@@ -232,9 +257,16 @@ router.patch('/:id/assignee', ...auth, async (req, res) => {
 
   const current = await prisma.request.findUnique({
     where: { requestId },
-    select: { requestId: true, status: true, requesterId: true, title: true, assignedTo: true },
+    select: {
+      requestId: true, status: true, requesterId: true, title: true, assignedTo: true,
+      industryDetail: { select: { confidentiality: true } },
+    },
   });
   if (!current) return res.status(404).json({ error: 'Request not found' });
+  if (!canView(req.user, current)) return denyRestricted(res);
+  if (isRestricted(current) && req.user.role !== 'lab_manager') {
+    return res.status(403).json({ error: 'Only the Lab Manager can assign a restricted request' });
+  }
   if (current.status === 'closed') {
     return res.status(409).json({ error: 'A closed request cannot be reassigned' });
   }

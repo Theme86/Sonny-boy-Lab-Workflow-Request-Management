@@ -12,6 +12,23 @@ export const FORM_TYPES = [
   { value: 'access_permission', label: 'Access permission' },
 ] as const;
 
+// Industry collaboration (US-7): only lecturers and the lab manager may submit it.
+const INDUSTRY_TYPE = { value: 'industry_collaboration', label: 'Industry collaboration (external partner)' } as const;
+export const canSubmitIndustry = (role?: string) => role === 'lecturer' || role === 'lab_manager';
+/** The types this person may pick in the form. */
+export const formTypesFor = (role?: string) => (canSubmitIndustry(role) ? [...FORM_TYPES, INDUSTRY_TYPE] : [...FORM_TYPES]);
+
+// URS-7. "restricted" is the default (SRS-15); the backend hides restricted requests from everyone but
+// the requester, the assigned person and the lab manager (SRS-16).
+export const CONFIDENTIALITY_LEVELS = ['public', 'internal', 'restricted'] as const;
+export const CONFIDENTIALITY_LABELS: Record<string, string> = { public: 'Public', internal: 'Internal', restricted: 'Restricted' };
+export const CONFIDENTIALITY_HINTS: Record<string, string> = {
+  public: 'Can be shown to all lab staff.',
+  internal: 'For the lab team only.',
+  restricted: 'Only you, the assigned person and the lab manager can see it.',
+};
+export const INDUSTRY_LIMITS = { partnerMin: 2, partnerMax: 150, contactNameMax: 100, contactEmailMax: 150, contactPhoneMax: 30 };
+
 export const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 export const PRIORITY_LABELS: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', urgent: 'Urgent' };
 export const RESOURCE_TYPES = ['room', 'equipment', 'software'] as const;
@@ -23,6 +40,7 @@ export const TYPE_LABELS: Record<string, string> = {
   access_permission: 'Access permission',
   consumable_order: 'Consumable order',
   equipment_reservation: 'Equipment reservation',
+  industry_collaboration: 'Industry collaboration',
 };
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -68,9 +86,18 @@ export type RequestItem = {
   requester: PersonRef;
   assignee: PersonRef | null;
   equipment: { equipmentId: number; name: string } | null;
+  /** Lists only carry the level (for the badge); the partner details come with the detail. */
+  industryDetail: { confidentiality: string } | null;
 };
 
-export type RequestDetail = RequestItem & {
+export type RequestDetail = Omit<RequestItem, 'industryDetail'> & {
+  industryDetail: {
+    partnerCompany: string;
+    contactName: string;
+    contactEmail: string;
+    contactPhone: string | null;
+    confidentiality: string;
+  } | null;
   accessDetail: { resourceType: string; resourceId: number | null; expiresAt: string | null } | null;
   consumableOrderItems: {
     orderItemId: number;
@@ -100,6 +127,11 @@ export type FormValues = {
   resourceType: string;
   resourceId: string;
   expiresAt: string;
+  partnerCompany: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  confidentiality: string;
 };
 export type FormErrors = Partial<Record<keyof FormValues, string>>;
 
@@ -112,6 +144,11 @@ export const emptyForm: FormValues = {
   resourceType: '',
   resourceId: '',
   expiresAt: '',
+  partnerCompany: '',
+  contactName: '',
+  contactEmail: '',
+  contactPhone: '',
+  confidentiality: 'restricted',
 };
 
 const isPositiveInt = (v: string) => /^\d+$/.test(v) && Number(v) > 0;
@@ -140,6 +177,27 @@ export function validateForm(v: FormValues): FormErrors {
     }
     if (v.expiresAt && new Date(v.expiresAt) <= new Date()) e.expiresAt = 'Pick a date in the future.';
   }
+
+  if (v.type === 'industry_collaboration') Object.assign(e, validateIndustry(v));
+  return e;
+}
+
+// US-7: partner company and external contact are required before the request can be saved.
+function validateIndustry(v: FormValues): FormErrors {
+  const e: FormErrors = {};
+  const partner = v.partnerCompany.trim();
+  if (!partner) e.partnerCompany = 'Enter the partner company name.';
+  else if (partner.length < INDUSTRY_LIMITS.partnerMin) e.partnerCompany = `Use at least ${INDUSTRY_LIMITS.partnerMin} characters.`;
+
+  if (!v.contactName.trim()) e.contactName = 'Enter the name of the external contact.';
+
+  const email = v.contactEmail.trim();
+  if (!email) e.contactEmail = 'Enter the external contact’s email.';
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.contactEmail = 'Enter a valid email, e.g. name@company.com.';
+
+  if (!CONFIDENTIALITY_LEVELS.includes(v.confidentiality as (typeof CONFIDENTIALITY_LEVELS)[number])) {
+    e.confidentiality = 'Choose a confidentiality level.';
+  }
   return e;
 }
 
@@ -160,6 +218,16 @@ export function toPayload(v: FormValues) {
       resourceType: v.resourceType,
       resourceId: v.resourceId.trim() || undefined,
       expiresAt: v.expiresAt || undefined,
+    };
+  }
+  if (v.type === 'industry_collaboration') {
+    return {
+      ...base,
+      partnerCompany: v.partnerCompany.trim(),
+      contactName: v.contactName.trim(),
+      contactEmail: v.contactEmail.trim(),
+      contactPhone: v.contactPhone.trim() || undefined,
+      confidentiality: v.confidentiality,
     };
   }
   return base;

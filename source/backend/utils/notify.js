@@ -14,12 +14,12 @@ function fit(text) {
 }
 
 /**
- * Ids of the active lecturers and lab managers, without the person who did the action
+ * Ids of the active lecturers and lab managers (or the `roles` you pass), without the person who did the action
  * (nobody needs a bell message about something they just did themselves).
  */
-async function approverIds(db, exceptUserId) {
+async function approverIds(db, exceptUserId, roles = APPROVER_ROLES) {
   const rows = await db.user.findMany({
-    where: { active: true, role: { in: APPROVER_ROLES }, userId: { not: exceptUserId } },
+    where: { active: true, role: { in: roles }, userId: { not: exceptUserId } },
     select: { userId: true },
   });
   return rows.map((r) => r.userId);

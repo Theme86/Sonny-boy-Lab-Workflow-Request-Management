@@ -6,6 +6,7 @@ const REQUEST_TYPES = [
   'consumable_order',
   'equipment_reservation',
   'ticket',
+  'industry_collaboration',
 ];
 const REQUEST_STATUSES = [
   'open', 'in_review', 'approved', 'in_progress', 'blocked', 'completed', 'rejected', 'closed',
@@ -14,17 +15,56 @@ const REQUEST_STATUSES = [
 // Types that THIS endpoint can create.
 // consumable_order / equipment_reservation need extra detail rows and are
 // handled by the consumable / equipment owners.
-const SUBMITTABLE_TYPES = ['ticket', 'maintenance', 'access_permission'];
+const SUBMITTABLE_TYPES = ['ticket', 'maintenance', 'access_permission', 'industry_collaboration'];
+// Who may submit an industry collaboration request (there is no separate "researcher" role)
+const INDUSTRY_SUBMITTER_ROLES = ['lecturer', 'lab_manager'];
+// URS-7. "restricted" is the default (SRS-15).
+const CONFIDENTIALITY_LEVELS = ['public', 'internal', 'restricted'];
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PRIORITIES = ['low', 'medium', 'high', 'urgent']; // Request.priority is VarChar(10)
 const RESOURCE_TYPES = ['room', 'equipment', 'software'];
 
-const LIMITS = { titleMin: 3, titleMax: 150, descMin: 5, descMax: 250 };
+const LIMITS = {
+  titleMin: 3, titleMax: 150, descMin: 5, descMax: 250,
+  partnerMin: 2, partnerMax: 150, contactNameMax: 100, contactEmailMax: 150, contactPhoneMax: 30,
+};
 
 // '' / null / undefined -> null (not provided), valid positive int -> number, anything else -> NaN
 function toOptionalPositiveInt(v) {
   if (v === undefined || v === null || v === '') return null;
   const n = Number(v);
   return Number.isInteger(n) && n > 0 ? n : NaN;
+}
+
+// US-7: partner company and external contact are required; confidentiality defaults to "restricted".
+// Fills `errors` per field (like the other types) and returns the detail row to save.
+function validateIndustry(b, errors) {
+  const text = (v) => (typeof v === 'string' ? v.trim() : '');
+
+  const partnerCompany = text(b.partnerCompany);
+  if (!partnerCompany) errors.partnerCompany = 'Partner company name is required';
+  else if (partnerCompany.length < LIMITS.partnerMin) errors.partnerCompany = `Partner company name must be at least ${LIMITS.partnerMin} characters`;
+  else if (partnerCompany.length > LIMITS.partnerMax) errors.partnerCompany = `Partner company name must be at most ${LIMITS.partnerMax} characters`;
+
+  const contactName = text(b.contactName);
+  if (!contactName) errors.contactName = 'External contact name is required';
+  else if (contactName.length > LIMITS.contactNameMax) errors.contactName = `Contact name must be at most ${LIMITS.contactNameMax} characters`;
+
+  const contactEmail = text(b.contactEmail);
+  if (!contactEmail) errors.contactEmail = 'External contact email is required';
+  else if (contactEmail.length > LIMITS.contactEmailMax) errors.contactEmail = `Contact email must be at most ${LIMITS.contactEmailMax} characters`;
+  else if (!EMAIL_PATTERN.test(contactEmail)) errors.contactEmail = 'Contact email is not valid';
+
+  const contactPhone = text(b.contactPhone);
+  if (contactPhone.length > LIMITS.contactPhoneMax) errors.contactPhone = `Contact phone must be at most ${LIMITS.contactPhoneMax} characters`;
+
+  let confidentiality = 'restricted';
+  if (b.confidentiality !== undefined && b.confidentiality !== null && b.confidentiality !== '') {
+    if (CONFIDENTIALITY_LEVELS.includes(b.confidentiality)) confidentiality = b.confidentiality;
+    else errors.confidentiality = `Confidentiality must be one of: ${CONFIDENTIALITY_LEVELS.join(', ')}`;
+  }
+
+  return { partnerCompany, contactName, contactEmail, contactPhone: contactPhone || null, confidentiality };
 }
 
 function validateRequestInput(body, now = new Date()) {
@@ -84,8 +124,11 @@ function validateRequestInput(body, now = new Date()) {
     if (!errors.resourceType) access = { resourceType, resourceId, expiresAt };
   }
 
+  let industry = null;
+  if (type === 'industry_collaboration') industry = validateIndustry(b, errors);
+
   const ok = Object.keys(errors).length === 0;
-  return { ok, errors, data: ok ? { type, title, description, priority, equipmentId, access } : null };
+  return { ok, errors, data: ok ? { type, title, description, priority, equipmentId, access, industry } : null };
 }
 
 module.exports = {
@@ -95,5 +138,7 @@ module.exports = {
   SUBMITTABLE_TYPES,
   PRIORITIES,
   RESOURCE_TYPES,
+  CONFIDENTIALITY_LEVELS,
+  INDUSTRY_SUBMITTER_ROLES,
   LIMITS,
 };
