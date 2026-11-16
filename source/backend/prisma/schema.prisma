@@ -275,6 +275,7 @@ model Equipment {
   reservationDetails   EquipmentReservationDetail[]
 
   @@index([categoryId])
+  @@index([name])
   @@map("equipments")
 }
 
