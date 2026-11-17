@@ -15,6 +15,7 @@ import {
   fullName,
   type RequestDetail,
 } from '@/lib/requests';
+import ConfidentialityBadge from '../ConfidentialityBadge';
 import StatusBadge from '../StatusBadge';
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -31,6 +32,7 @@ function RequestDetailPageContent() {
   const { user, loading: authLoading, error: authError } = useRequireAuth();
   const [request, setRequest] = useState<RequestDetail | null>(null);
   const [error, setError] = useState('');
+  const [restricted, setRestricted] = useState(false); // 403 from the backend: a restricted request you may not see
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,7 +40,10 @@ function RequestDetailPageContent() {
     fetch(`${API_URL}/api/requests/${id}`, { credentials: 'include' })
       .then(async (res) => {
         const data = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(data?.error ?? 'Failed to load request');
+        if (!res.ok) {
+          if (data?.restricted) setRestricted(true);
+          throw new Error(data?.error ?? 'Failed to load request');
+        }
         setRequest(data.request);
       })
       .catch((err: Error) => setError(err.message))
@@ -53,7 +58,12 @@ function RequestDetailPageContent() {
     <div className="mx-auto w-full max-w-2xl p-6 sm:p-8">
       <Link href="/requests" className="text-sm text-zinc-500 hover:underline">← Back to requests</Link>
 
-      {error || !request ? (
+      {restricted ? (
+        <div role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-200">
+          <p className="font-semibold">🔒 This request is restricted</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      ) : error || !request ? (
         <p className="mt-6 text-red-600">{error || 'Request not found'}</p>
       ) : (
         <>
@@ -61,7 +71,10 @@ function RequestDetailPageContent() {
             <h1 className="text-2xl font-semibold">
               <span className="text-zinc-400">#{request.requestId}</span> {request.title}
             </h1>
-            <StatusBadge status={request.status} />
+            <div className="flex flex-col items-end gap-1">
+              <StatusBadge status={request.status} />
+              {request.industryDetail && <ConfidentialityBadge level={request.industryDetail.confidentiality} />}
+            </div>
           </div>
 
           <dl>
@@ -77,6 +90,15 @@ function RequestDetailPageContent() {
                 {request.accessDetail.resourceId ? ` #${request.accessDetail.resourceId}` : ''}
                 {request.accessDetail.expiresAt ? `, until ${new Date(request.accessDetail.expiresAt).toLocaleDateString()}` : ''}
               </Row>
+            )}
+            {request.industryDetail && (
+              <>
+                <Row label="Partner company">{request.industryDetail.partnerCompany}</Row>
+                <Row label="External contact">
+                  {request.industryDetail.contactName} ({request.industryDetail.contactEmail}
+                  {request.industryDetail.contactPhone ? `, ${request.industryDetail.contactPhone}` : ''})
+                </Row>
+              </>
             )}
             {request.consumableOrderItems.length > 0 && (
               <Row label="Items">

@@ -15,7 +15,7 @@ router.post(
   requireRole("lecturer", "lab_manager"),
   asyncHandler(async (req, res) => {
     const data = createSchema.parse(req.body);
-    await assertTargetsExist(data);
+    await assertTargetsExist(data, req.user);
     const notification = await prisma.notification.create({ data, include });
     res.status(201).json(notification);
   })

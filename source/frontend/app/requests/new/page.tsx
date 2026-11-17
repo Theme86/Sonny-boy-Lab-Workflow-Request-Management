@@ -2,20 +2,21 @@
 // Submit-request form.
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/AppShell';
 import { PageHeading } from '@/components/ProfileView';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { ApiError, apiFetch } from '@/lib/api';
 import {
-  FORM_TYPES,
   LIMITS,
   PRIORITIES,
   PRIORITY_LABELS,
   RESOURCE_LABELS,
   RESOURCE_TYPES,
   emptyForm,
+  formTypesFor,
   toPayload,
   validateForm,
   type FormErrors,
@@ -23,38 +24,10 @@ import {
   type RequestDetailResponse,
 } from '@/lib/requests';
 import { ui } from '@/lib/ui';
+import { Field } from './Field';
+import { IndustryFields } from './IndustryFields';
 
 const control = (error?: string) => `${ui.input} ${error ? ui.inputError : ''}`;
-
-function Field({
-  label,
-  htmlFor,
-  error,
-  hint,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  error?: string;
-  hint?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium">
-        {label}
-      </label>
-      {children}
-      {error ? (
-        <p id={`${htmlFor}-error`} className={`mt-1.5 text-sm ${ui.errorText}`}>
-          {error}
-        </p>
-      ) : (
-        hint && <p className={`mt-1.5 text-xs ${ui.muted}`}>{hint}</p>
-      )}
-    </div>
-  );
-}
 
 export default function NewRequestPage() {
   return (
@@ -66,6 +39,7 @@ export default function NewRequestPage() {
 
 function NewRequestForm() {
   const router = useRouter();
+  const { user } = useCurrentUser();
   const [values, setValues] = useState<FormValues>(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState('');
@@ -108,7 +82,7 @@ function NewRequestForm() {
       <form onSubmit={handleSubmit} noValidate className={`space-y-5 p-6 ${ui.card}`}>
         <Field label="What is this about?" htmlFor="type" error={errors.type}>
           <select id="type" className={`${ui.select} w-full`} value={values.type} onChange={(e) => set('type', e.target.value)}>
-            {FORM_TYPES.map((t) => (
+            {formTypesFor(user?.role).map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
@@ -218,6 +192,8 @@ function NewRequestForm() {
             </Field>
           </>
         )}
+
+        {values.type === 'industry_collaboration' && <IndustryFields values={values} errors={errors} set={set} />}
 
         {formError && (
           <p role="alert" className="rounded-lg bg-[#fce8e6] px-4 py-3 text-sm text-[#8c1d18] dark:bg-[#601410] dark:text-[#f9dedc]">
