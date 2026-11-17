@@ -3,6 +3,9 @@
 const jwt = require('jsonwebtoken');
 
 function requireAuth(req, res, next) {
+  // already checked against the database by requireActiveUser (index.js runs it for every /api route):
+  // keep that fresh role instead of reading the older one from the token again
+  if (req.userVerified) return next();
   const token = req.cookies?.token;
   if (!token) return res.status(401).json({ error: 'No token' });
 
@@ -27,6 +30,7 @@ function requireRole(...roles) {
 // deactivation take effect immediately instead of waiting for the JWT to expire.
 // Use after requireAuth: router.get('/x', requireAuth, requireActiveUser, ...)
 async function requireActiveUser(req, res, next) {
+  if (req.userVerified) return next(); // already done earlier in this request, no second query
   try {
     const { prisma } = require('../lib/prisma');
     const current = await prisma.user.findUnique({
@@ -36,6 +40,7 @@ async function requireActiveUser(req, res, next) {
     if (!current) return res.status(401).json({ error: 'User no longer exists' });
     if (!current.active) return res.status(403).json({ error: 'Account disabled' });
     req.user = { ...req.user, role: current.role };
+    req.userVerified = true;
     next();
   } catch (err) {
     next(err);

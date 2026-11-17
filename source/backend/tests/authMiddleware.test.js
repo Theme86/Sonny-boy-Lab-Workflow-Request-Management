@@ -175,3 +175,42 @@ describe('requireActiveUser', () => {
     assert.equal(res.body, undefined);
   });
 });
+
+describe('requireAuth + requireActiveUser used together (index.js runs both for every /api route)', () => {
+  const tokenFor = (role) => jwt.sign({ userId: 7, role }, SECRET);
+  beforeEach(() => {
+    dbError = null;
+    lastQuery = null;
+  });
+
+  test('the fresh role from the database wins over the older role in the token, and survives later requireAuth calls', async () => {
+    dbUser = { userId: 7, role: 'member', active: true }; // demoted since the token was issued
+    const req = { cookies: { token: tokenFor('lab_manager') } };
+    await run(requireAuth, req);
+    await run(requireActiveUser, req);
+    assert.equal(req.user.role, 'member');
+    await run(requireAuth, req); // a route's own requireAuth must not bring the token role back
+    assert.equal(req.user.role, 'member');
+    const { res } = await run(requireRole('lab_manager'), req);
+    assert.equal(res.statusCode, 403);
+  });
+
+  test('the second requireActiveUser does not query the database again', async () => {
+    dbUser = { userId: 7, role: 'ta', active: true };
+    const req = { cookies: { token: tokenFor('ta') } };
+    await run(requireAuth, req);
+    await run(requireActiveUser, req);
+    lastQuery = null;
+    await run(requireActiveUser, req);
+    assert.equal(lastQuery, null);
+  });
+
+  test('a disabled account is stopped with 403', async () => {
+    dbUser = { userId: 7, role: 'ta', active: false };
+    const req = { cookies: { token: tokenFor('ta') } };
+    await run(requireAuth, req);
+    const { res, nextArg } = await run(requireActiveUser, req);
+    assert.equal(res.statusCode, 403);
+    assert.equal(nextArg, 'not called');
+  });
+});
