@@ -1,6 +1,7 @@
 services:
   db:
     image: mysql:8
+    command: --default-time-zone=+00:00   # always UTC; do not change
     environment:
       MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_DATABASE: mydb
@@ -22,6 +23,7 @@ services:
     ports:
       - "5175:5175"
     environment:
+      TZ: Asia/Bangkok
       DATABASE_HOST: db
       DATABASE_PORT: 3306
       DATABASE_USER: user
@@ -34,7 +36,10 @@ services:
       PORT: 5175
       NODE_ENV: production
     volumes:
-    - user_images:/app/public/userImages
+      - user_images:/app/public/userImages
+      - equipment_images:/app/public/equipmentImages
+      - consumable_images:/app/public/consumableImages
+      - lab_room_images:/app/public/labRoomImages
     depends_on:
       db:
         condition: service_healthy
@@ -53,3 +58,6 @@ services:
 volumes:
   db_data:
   user_images:
+  equipment_images:
+  consumable_images:
+  lab_room_images:

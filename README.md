@@ -1,6 +1,8 @@
 # Lab Workflow & Request Management
 
-A web app for Aj. Milk's lab to submit and track lab requests, book lab rooms, and manage equipment and consumables. It replaces email threads, chat messages and spreadsheets.
+A system for **Aj. Milk's lab ("vase")** to track lab requests — submission, viewing, status tracking, and triage/closure — replacing the current mix of email threads, chat messages, and ad-hoc spreadsheets.
+
+A web application for tracking laboratory requests, approvals, and processing status. The system allows users to submit requests, review current workloads, monitor status changes, and manage workflow progress for the lab team.
 
 
 ---
