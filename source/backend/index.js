@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./utils/checkEnv').assertEnv(); // stop at once, with a clear message, if a setting is missing
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -20,7 +21,7 @@ const notificationRouter = require("./routes/notificationRoutes");
 const labRoomRouter = require("./routes/labRoomRouter");
 const labSessionRouter = require('./routes/labSessionRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
-const { requireAuth } = require('./middleware/auth');
+const { requireAuth, requireActiveUser } = require('./middleware/auth');
 
 
 const app = express();
@@ -36,6 +37,7 @@ app.use(cookieParser());
 
 
 // Mount User API Routes
+app.use('/api', requireAuth, requireActiveUser);
 app.use('/api/users', userRoutes);
 app.use('/auth', authRoutes);
 app.use('/userImages', express.static(path.join(__dirname, 'public', 'userImages')));
