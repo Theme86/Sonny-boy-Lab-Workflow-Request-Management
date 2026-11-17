@@ -20,7 +20,7 @@ async function attention(prisma, user, now) {
   if (!Object.values(access).some(Boolean)) return null;
 
   const [requests, pendingSessions, newMembers] = await Promise.all([
-    access.requests ? requestAttention(prisma, user.userId) : undefined,
+    access.requests ? requestAttention(prisma, user) : undefined,
     access.pendingSessions ? pendingSessionQueue(prisma) : undefined,
     access.newMembers ? newMemberCount(prisma, now) : undefined,
   ]);

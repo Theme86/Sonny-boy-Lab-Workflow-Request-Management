@@ -18,6 +18,7 @@ import {
   type RequestListResponse,
 } from '@/lib/requests';
 import { ui } from '@/lib/ui';
+import ConfidentialityBadge from './ConfidentialityBadge';
 import StatusBadge from './StatusBadge';
 
 const PAGE_SIZE = 20;
@@ -163,7 +164,14 @@ function RequestList() {
                         {r.title}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{TYPE_LABELS[r.type] ?? r.type}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {TYPE_LABELS[r.type] ?? r.type}
+                      {r.industryDetail && (
+                        <span className="ml-2">
+                          <ConfidentialityBadge level={r.industryDetail.confidentiality} />
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">{r.priority ? (PRIORITY_LABELS[r.priority] ?? r.priority) : '–'}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={r.status} />
