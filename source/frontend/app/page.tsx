@@ -17,7 +17,7 @@ import { fontStyle, fontVariables } from '@/lib/fonts';
 import { useTheme, type Theme } from '@/lib/theme';
 import { ui } from '@/lib/ui';
 
-const HEADING = 'Requests, bookings and stock for the physics lab';
+const BRAND = 'sonnyboy';
 
 // The fluid per theme. Dark: violet ink on the dark canvas colour (#14111c).
 // Light: the canvas is inverted in CSS, so the base is the inverse of #e9eff8 and the hues are the
@@ -27,7 +27,7 @@ const FLUID: Record<Theme, { back: { r: number; g: number; b: number }; hues: [n
   light: { back: { r: 22, g: 16, b: 7 }, hues: [0.03, 0.14] },
 };
 
-const DELAY = { heading: 150, text: 650, actions: 850 };
+const DELAY = { heading: 150, tagline: 650, text: 800, actions: 1000 };
 
 type Vars = CSSProperties & Record<`--${string}`, string>;
 
@@ -75,7 +75,7 @@ export default function Home() {
   }, []);
 
   const href = signedIn ? '/dashboard' : '/login';
-  const words = HEADING.split(' ');
+  const letters = BRAND.split('');
 
   return (
     <div className={`flex min-h-screen flex-col ${ui.page} ${fontVariables}`} style={fontStyle}>
@@ -103,21 +103,28 @@ export default function Home() {
         <div className="lp-scrim" aria-hidden="true" />
 
         <div className="flex max-w-[760px] flex-col items-center">
-          <h1 className="font-serif text-[36px] leading-[1.15] sm:text-[52px]">
-            {words.map((word, i) => (
-              <span key={i}>
+          <h1 className="font-serif text-[72px] leading-none tracking-[-0.02em] uppercase sm:text-[120px]">
+            <span className="sr-only">Sonnyboy</span>
+            <span aria-hidden="true">
+              {letters.map((letter, i) => (
                 <span
+                  key={i}
                   className="lp-word"
-                  style={{ '--lp-delay': `${DELAY.heading + i * 70}ms`, '--lp-dur': '700ms', '--lp-from': '20px' } as Vars}
+                  style={{ '--lp-delay': `${DELAY.heading + i * 60}ms`, '--lp-dur': '700ms', '--lp-from': '28px' } as Vars}
                 >
-                  {word}
+                  {letter}
                 </span>
-                {i < words.length - 1 && ' '}
-              </span>
-            ))}
+              ))}
+            </span>
           </h1>
           <p
-            className="lp-reveal mt-5 max-w-[560px] text-[17px] leading-relaxed text-vl-ink-soft"
+            className="lp-reveal mt-5 font-serif text-[24px] leading-snug text-vl-ink sm:text-[30px]"
+            style={{ '--lp-delay': `${DELAY.tagline}ms` } as Vars}
+          >
+            Requests, bookings and stock
+          </p>
+          <p
+            className="lp-reveal mt-4 max-w-[560px] text-[17px] leading-relaxed text-vl-ink-soft"
             style={{ '--lp-delay': `${DELAY.text}ms` } as Vars}
           >
             Report a broken instrument, book a room, check how much ethanol is left, and see who is looking after your request.
