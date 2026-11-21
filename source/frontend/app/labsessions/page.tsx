@@ -35,6 +35,14 @@ type Session = {
 };
 
 const MANAGER_ROLES = ['lecturer', 'lab_manager'];
+
+/** Query string for the list on each tab. */
+function sessionQuery(tab: 'all' | 'pending' | 'archived') {
+  const params = new URLSearchParams();
+  if (tab === 'pending') params.set('status', 'pending_approval');
+  if (tab === 'archived') params.set('archived', 'true');
+  return params.toString();
+}
 const ARCHIVABLE: Status[] = ['completed', 'cancelled', 'rejected'];
 const CANCELLABLE: Status[] = ['pending_approval', 'approved', 'scheduled'];
 
@@ -91,14 +99,12 @@ function Sessions() {
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
 
+  // Reload after an approve / cancel / archive (called from event handlers only).
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    const params = new URLSearchParams();
-    if (tab === 'pending') params.set('status', 'pending_approval');
-    if (tab === 'archived') params.set('archived', 'true');
     try {
-      setSessions(await apiFetch<Session[]>(`/api/lab-sessions?${params}`));
+      setSessions(await apiFetch<Session[]>(`/api/lab-sessions?${sessionQuery(tab)}`));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -106,9 +112,32 @@ function Sessions() {
     }
   }, [tab]);
 
+  // Load when the tab changes. State is set only in the promise callbacks, never
+  // synchronously in the effect body (react-hooks/set-state-in-effect).
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    apiFetch<Session[]>(`/api/lab-sessions?${sessionQuery(tab)}`)
+      .then((data) => {
+        if (cancelled) return;
+        setSessions(data);
+        setError('');
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
+
+  function switchTab(next: typeof tab) {
+    if (next === tab) return;
+    setLoading(true); // the effect above turns it off when the new list arrives
+    setTab(next);
+  }
 
   async function changeStatus(s: Session, to: Status) {
     setBusyId(s.labSessionId);
@@ -172,7 +201,7 @@ function Sessions() {
         {tabs.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => switchTab(t.key)}
             className={`rounded-full px-4 py-1.5 text-sm font-medium ${
               tab === t.key
                 ? 'bg-vl-accent-soft text-vl-accent-ink'
