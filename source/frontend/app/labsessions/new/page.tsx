@@ -159,7 +159,13 @@ function Reserve() {
     return out;
   }, [selected]);
 
-  const now = Date.now();
+  // The current time, kept in state so render stays pure (react-hooks/purity).
+  // Refreshed every minute, so slots turn "past" while the page is open.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
   const isBlocked = (t: number) => t + HOUR <= now || slotState.has(t);
 
   // ---------- selection ----------
