@@ -1,0 +1,68 @@
+/* app/landing.css — the parts of the landing page that Tailwind can't express: the fluid canvas,
+   the scrim over it and the entrance animation. Colours come from the app's vl-* theme tokens
+   (app/globals.css), so light and dark mode match the login page and the rest of the app. */
+
+.lp-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: calc(100vh - 4rem);
+  min-height: calc(100svh - 4rem);
+}
+
+.lp-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+/* Light mode: the engine draws light ink on a dark base; inverting it gives dark ink on the light
+   canvas colour (page.tsx picks the inverted base and hues so the result matches the theme). */
+html:not(.dark) .lp-canvas { filter: invert(1); }
+
+.lp-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    115% 95% at 50% 46%,
+    color-mix(in srgb, var(--vl-canvas) 78%, transparent) 0%,
+    color-mix(in srgb, var(--vl-canvas) 70%, transparent) 30%,
+    color-mix(in srgb, var(--vl-canvas) 42%, transparent) 60%,
+    color-mix(in srgb, var(--vl-canvas) 10%, transparent) 100%
+  );
+}
+
+/* entrance: blocks rise in; the heading word by word (delays set inline from page.tsx) */
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(var(--lp-from, 1rem));
+  transition:
+    opacity 700ms cubic-bezier(0.2, 0, 0, 1) var(--lp-delay, 0ms),
+    transform 700ms cubic-bezier(0.2, 0, 0, 1) var(--lp-delay, 0ms);
+}
+.lp-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(var(--lp-from));
+  transition:
+    opacity var(--lp-dur) cubic-bezier(0.33, 1, 0.68, 1) var(--lp-delay),
+    transform var(--lp-dur) cubic-bezier(0.33, 1, 0.68, 1) var(--lp-delay);
+}
+.lp-shown .lp-reveal,
+.lp-shown .lp-word {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal,
+  .lp-word {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
