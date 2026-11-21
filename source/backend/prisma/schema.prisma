@@ -43,6 +43,7 @@ enum RequestType {
   consumable_order
   equipment_reservation
   ticket
+  industry_collaboration
 
   @@map("request_type")
 }
@@ -66,6 +67,16 @@ enum ResourceType {
   software
 
   @@map("resource_type")
+}
+
+// Confidentiality of an industry-collaboration request (US-7). "restricted" = only the requester,
+// the assigned staff member and the Lab Manager can see it (US-8, SRS-16).
+enum Confidentiality {
+  public
+  internal
+  restricted
+
+  @@map("confidentiality")
 }
 
 // ============================================
@@ -101,6 +112,7 @@ model User {
   requestsAssigned     Request[]             @relation("RequestAssignee")
   statusChanges        RequestStatusHistory[]
   notifications        Notification[]
+  restrictedAccessLogs RestrictedAccessLog[]
 
   @@map("users")
 }
@@ -390,6 +402,8 @@ model Request {
   consumableOrderItems ConsumableOrderItem[]
   accessDetail         AccessPermissionDetail?
   reservationDetail    EquipmentReservationDetail?
+  industryDetail       IndustryCollaborationDetail?
+  restrictedAccessLogs RestrictedAccessLog[]
   notifications        Notification[]
 
   @@index([requesterId])
@@ -459,6 +473,35 @@ model EquipmentReservationDetail {
 
   @@index([equipmentId])
   @@map("equipment_reservation_details")
+}
+
+// --- type = industry_collaboration detail (1-to-1), US-7 ---
+model IndustryCollaborationDetail {
+  requestId       Int             @id @map("request_id")
+  partnerCompany  String          @map("partner_company") @db.VarChar(150)
+  contactName     String          @map("contact_name") @db.VarChar(100)
+  contactEmail    String          @map("contact_email") @db.VarChar(150)
+  contactPhone    String?         @map("contact_phone") @db.VarChar(30)
+  confidentiality Confidentiality @default(restricted)
+
+  request Request @relation(fields: [requestId], references: [requestId])
+
+  @@map("industry_collaboration_details")
+}
+
+// Who opened a restricted request, and when (US-8, SRS-17).
+model RestrictedAccessLog {
+  logId      Int      @id @default(autoincrement()) @map("log_id")
+  requestId  Int      @map("request_id")
+  userId     Int      @map("user_id")
+  accessedAt DateTime @default(now()) @map("accessed_at")
+
+  request Request @relation(fields: [requestId], references: [requestId])
+  user    User    @relation(fields: [userId], references: [userId])
+
+  @@index([requestId, accessedAt])
+  @@index([userId])
+  @@map("restricted_access_logs")
 }
 
 // ============================================
