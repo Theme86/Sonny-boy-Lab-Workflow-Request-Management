@@ -1,68 +1,156 @@
-"use client";
+// app/page.tsx — the public landing page: a full-screen dark hero over a live WebGL fluid
+// (lib/fluidSimulation.js) that bursts into colour on load and keeps swirling; the mouse stirs it too.
+// The text staggers in, the heading and sub-line word by word. Under the hero, an overview of what the
+// app has and does (components/landing/LandingOverview.tsx). Styles: app/landing.css.
+// Sends visitors to the login page, or straight to the dashboard when they are already signed in.
+'use client';
 
-import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import './landing.css';
+import Link from 'next/link';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { VaseMark } from '@/components/icons';
+import { LandingOverview } from '@/components/landing/LandingOverview';
+import { apiFetch } from '@/lib/api';
+import { fluidSimulation } from '@/lib/fluidSimulation';
+import { fontVariables, landingFontVariable } from '@/lib/fonts';
+import { displayFamily } from '@/lib/fontStacks';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const HEADING = 'Every Lab Request, Tracked to Done';
+const SUB_LINE = 'Book equipment, report problems and order supplies in one place, instead of email threads and spreadsheets.';
+
+const NAV_LINKS = [
+  { href: '/requests', label: 'Requests' },
+  { href: '/equipment', label: 'Equipment' },
+  { href: '/labsessions', label: 'Lab sessions' },
+  { href: '/consumables', label: 'Consumables' },
+] as const;
+
+// entrance delays after load, in ms
+const DELAY = { nav: 150, badge: 320, heading: 480, sub: 1150, bar: 1450, footer: 1650 };
+
+type Vars = CSSProperties & Record<`--${string}`, string>;
+
+const block = (delay: number, from = '1.25rem'): Vars => ({ '--lp-delay': `${delay}ms`, '--lp-from': from });
+
+/** Splits text into words that fade and rise in one after another. */
+function Words({ text, delay, stagger, duration, from }: { text: string; delay: number; stagger: number; duration: number; from: string }) {
+  const words = text.split(' ');
+  return words.map((word, i) => (
+    <span key={i}>
+      <span
+        className="lp-word"
+        style={{ '--lp-delay': `${delay + i * stagger}ms`, '--lp-dur': `${duration}ms`, '--lp-from': from } as Vars}
+      >
+        {word}
+      </span>
+      {i < words.length - 1 && ' '}
+    </span>
+  ));
+}
+
+const prefersReducedMotion = () =>
+  typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export default function Home() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // null while we ask the server, so the buttons don't flash the wrong label
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [shown, setShown] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_URL}/auth/me`, { credentials: "include" })
-      .then((response) => setIsAuthenticated(response.ok))
-      .catch(() => setIsAuthenticated(false));
+    apiFetch('/auth/me')
+      .then(() => setSignedIn(true))
+      .catch(() => setSignedIn(false));
   }, []);
 
+  // start the entrance on the frame after the first paint, so the transitions run
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  // the fluid: skipped for people who ask for reduced motion; without WebGL the dark base shows instead
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || prefersReducedMotion()) return;
+    let stop: (() => void) | undefined;
+    try {
+      stop = fluidSimulation(canvas);
+    } catch {
+      stop = undefined;
+    }
+    return () => stop?.();
+  }, []);
+
+  const href = signedIn ? '/dashboard' : '/login';
+
   return (
-    <div className="min-h-screen bg-[#f4f1e9] text-[#17231f]">
-      <header className="sticky top-0 z-20 border-b border-[#d9d7ca] bg-[#f4f1e9]/95 backdrop-blur">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
-          <Link href="/" className="text-lg font-semibold tracking-[0.18em] text-[#17231f]">
-            LAB
-          </Link>
-          <div className="flex min-h-10 items-center">
-            {isAuthenticated === null ? (
-              <span className="text-sm text-[#66736c]">Checking access...</span>
-            ) : (
-              <Link
-                href={isAuthenticated ? "/dashboard" : "/login"}
-                className="rounded-full bg-[#d9ef67] px-5 py-2.5 text-sm font-semibold text-[#17231f] transition hover:bg-[#c9e34d]"
-              >
-                {isAuthenticated ? "Go to app" : "Login"}
+    <div className={`lp-page ${fontVariables} ${landingFontVariable}`} style={{ '--lp-font': displayFamily } as Vars}>
+    <section className={`lp-hero ${shown ? 'lp-shown' : ''}`}>
+      <canvas ref={canvasRef} className="lp-canvas" aria-hidden="true" />
+      <div className="lp-scrim" aria-hidden="true" />
+
+      <header className="lp-nav lp-reveal" style={block(DELAY.nav, '-0.75rem')}>
+        <Link href="/" className="lp-brand">
+          <VaseMark />
+          Vase Lab
+        </Link>
+        <nav aria-label="Main" className="lp-links">
+          {NAV_LINKS.map(({ href: to, label }) => (
+            <Link key={to} href={to}>
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <span className="lp-cta-slot" aria-live="polite">
+          {signedIn === null ? (
+            <span className="sr-only">Checking access…</span>
+          ) : (
+            <Link href={href} className="lp-pill">
+              {signedIn ? 'Go to dashboard' : 'Sign in'}
+            </Link>
+          )}
+        </span>
+      </header>
+
+      <div className="lp-column">
+        <p className="lp-badge lp-reveal" style={block(DELAY.badge)}>
+          Physics lab · Request management
+        </p>
+        <h1 className="lp-heading">
+          <Words text={HEADING} delay={DELAY.heading} stagger={85} duration={720} from="26px" />
+        </h1>
+        <p className="lp-sub">
+          <Words text={SUB_LINE} delay={DELAY.sub} stagger={22} duration={600} from="14px" />
+        </p>
+        <div className="lp-bar-wrap lp-reveal" style={block(DELAY.bar)}>
+          <div className="lp-bar">
+            <p className="lp-bar-text">
+              {signedIn ? 'You are signed in.' : 'Sign in with your university Google account.'}
+            </p>
+            {signedIn !== null && (
+              <Link href={href} className="lp-pill">
+                {signedIn ? 'Go to dashboard' : 'Sign in with Google'}
               </Link>
             )}
           </div>
-        </nav>
-      </header>
+        </div>
+      </div>
 
-      <main>
-        <section className="relative isolate flex min-h-[calc(100vh-73px)] items-end overflow-hidden px-6 py-12 lg:px-10 lg:py-16">
-          <Image
-            src="/landing/Laboratories.jpg"
-            alt="A bright modern laboratory with research equipment"
-            fill
-            priority
-            className="-z-20 object-cover"
-          />
-          <div className="absolute inset-0 -z-10 bg-[#10251f]/45" />
-          <div className="mx-auto w-full max-w-7xl">
-            <div className="max-w-2xl text-white">
-              <p className="mb-5 text-sm font-medium uppercase tracking-[0.3em] text-[#d9ef67]">
-                Research, Screwed
-              </p>
-              <h1 className="text-6xl font-semibold tracking-[-0.04em] sm:text-8xl">
-                lab
-              </h1>
-              <p className="mt-6 max-w-lg text-lg leading-8 text-white/85 sm:text-xl">
-                description
-              </p>
-            </div>
-          </div>
-          
-        </section>
-      </main>
+      <div className="lp-footer lp-reveal" style={block(DELAY.footer)}>
+        <a href="#features" className="lp-scroll">
+          See what’s inside <span aria-hidden="true">↓</span>
+        </a>
+      </div>
+    </section>
+
+    <main>
+      <LandingOverview />
+    </main>
+
+    <footer className="lp-page-footer">
+      <p>© 2026 Vase Lab — lab workflow &amp; request management.</p>
+    </footer>
     </div>
   );
 }
