@@ -17,7 +17,7 @@ import { fontStyle, fontVariables } from '@/lib/fonts';
 import { useTheme, type Theme } from '@/lib/theme';
 import { ui } from '@/lib/ui';
 
-const BRAND = 'sonnyboy';
+const BRAND = 'Vase Lab';
 
 // The fluid per theme. Dark: violet ink on the dark canvas colour (#14111c).
 // Light: the canvas is inverted in CSS, so the base is the inverse of #e9eff8 and the hues are the
@@ -75,7 +75,11 @@ export default function Home() {
   }, []);
 
   const href = signedIn ? '/dashboard' : '/login';
-  const letters = BRAND.split('');
+  // letters animate in one by one; each word stays together so a narrow screen wraps between words
+  const brandWords = BRAND.split(' ').map((word, w, all) => ({
+    word,
+    offset: all.slice(0, w).join(' ').length + (w ? 1 : 0),
+  }));
 
   return (
     <div className={`flex min-h-screen flex-col ${ui.page} ${fontVariables}`} style={fontStyle}>
@@ -104,15 +108,20 @@ export default function Home() {
 
         <div className="flex max-w-[760px] flex-col items-center">
           <h1 className="font-serif text-[72px] leading-none tracking-[-0.02em] uppercase sm:text-[120px]">
-            <span className="sr-only">Sonnyboy</span>
+            <span className="sr-only">{BRAND}</span>
             <span aria-hidden="true">
-              {letters.map((letter, i) => (
-                <span
-                  key={i}
-                  className="lp-word"
-                  style={{ '--lp-delay': `${DELAY.heading + i * 60}ms`, '--lp-dur': '700ms', '--lp-from': '28px' } as Vars}
-                >
-                  {letter}
+              {brandWords.map(({ word, offset }, w) => (
+                <span key={w} className="inline-block whitespace-nowrap">
+                  {word.split('').map((letter, i) => (
+                    <span
+                      key={i}
+                      className="lp-word"
+                      style={{ '--lp-delay': `${DELAY.heading + (offset + i) * 60}ms`, '--lp-dur': '700ms', '--lp-from': '28px' } as Vars}
+                    >
+                      {letter}
+                    </span>
+                  ))}
+                  {w < brandWords.length - 1 && ' '}
                 </span>
               ))}
             </span>

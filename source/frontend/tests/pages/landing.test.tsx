@@ -79,11 +79,11 @@ describe('Landing page', () => {
     expect(document.documentElement).toHaveClass('dark');
   });
 
-  test('the sonnyboy heading reads as one word even though its letters animate one by one', () => {
+  test('the Vase Lab heading reads normally even though its letters animate one by one', () => {
     apiFetch.mockReturnValue(new Promise(() => {}));
     render(<Home />);
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Sonnyboy' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Vase Lab' })).toBeInTheDocument();
     expect(screen.getByText('Requests, bookings and stock')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'What you can do here' })).toHaveAttribute('href', '#what-you-can-do');
   });
