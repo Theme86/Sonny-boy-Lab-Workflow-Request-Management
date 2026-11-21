@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { prisma } = require('../lib/prisma');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole, requireActiveUser } = require('../middleware/auth');
 const { saveConsumableImage, deleteConsumableImage } = require('../utils/saveConsumableImage');
 const { validateConsumableInput } = require('../utils/validateConsumable');
 const { becameLow, lowStockMessage } = require('../utils/lowStock');
@@ -94,8 +94,10 @@ async function replaceLinks(tx, consumableId, ids) {
   }
 }
 
+router.use( requireAuth, requireActiveUser)
+
 // GET /api/consumables/hazards   the GHS hazards that can be attached to a consumable
-router.get('/hazards', requireAuth, async (req, res) => {
+router.get('/hazards', async (req, res) => {
   const hazards = await prisma.hazard.findMany({
     select: { hazardId: true, code: true, name: true, description: true },
     orderBy: [{ code: 'asc' }, { name: 'asc' }],
@@ -104,7 +106,7 @@ router.get('/hazards', requireAuth, async (req, res) => {
 });
 
 // GET /api/consumables/properties   the property tags that can be attached to a consumable
-router.get('/properties', requireAuth, async (req, res) => {
+router.get('/properties', async (req, res) => {
   const properties = await prisma.consumableProperty.findMany({
     select: { propertyId: true, name: true, description: true },
     orderBy: { name: 'asc' },
@@ -113,7 +115,7 @@ router.get('/properties', requireAuth, async (req, res) => {
 });
 
 // GET /api/consumables?search=
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', async (req, res) => {
   const { search } = req.query;
   const consumables = await prisma.consumable.findMany({
     where: search ? { name: { contains: search } } : undefined,
@@ -125,7 +127,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 // POST /api/consumables
 // body: { name, unit, currentStock?, reorderThreshold?, expiryDate?, description?, phValue?, imageUrl?, hazardIds?, propertyIds? }
-router.post('/', requireAuth, canManage, async (req, res) => {
+router.post('/', canManage, async (req, res) => {
   const { ok, errors, data } = validateConsumableInput(req.body);
   if (!ok) return sendInvalid(res, errors);
   const { fields, ids } = splitLinks(data);
@@ -139,7 +141,7 @@ router.post('/', requireAuth, canManage, async (req, res) => {
 
 // PUT /api/consumables/:id   body: any of the POST fields; only the fields sent are changed.
 // hazardIds / propertyIds, if sent, replace that whole list.
-router.put('/:id', requireAuth, canManage, async (req, res) => {
+router.put('/:id', canManage, async (req, res) => {
   const consumableId = parseId(req.params.id);
   const before = await prisma.consumable.findUnique({
     where: { consumableId },
@@ -176,7 +178,7 @@ router.put('/:id', requireAuth, canManage, async (req, res) => {
 });
 
 // DELETE /api/consumables/:id   hazard / property links go with it; 409 if a lab session or order still uses it
-router.delete('/:id', requireAuth, canManage, async (req, res) => {
+router.delete('/:id', canManage, async (req, res) => {
   const consumableId = parseId(req.params.id);
   await orNotFound(() =>
     prisma.$transaction(async (tx) => {
@@ -189,7 +191,7 @@ router.delete('/:id', requireAuth, canManage, async (req, res) => {
 });
 
 // PUT /api/consumables/:id/image   body = the image file itself
-router.put('/:id/image', requireAuth, canManage, rawImage, async (req, res) => {
+router.put('/:id/image', canManage, rawImage, async (req, res) => {
   const consumableId = parseId(req.params.id);
   if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
     throw httpError(400, 'Send the image file as the request body with Content-Type image/jpeg, image/png or image/webp');
@@ -203,7 +205,7 @@ router.put('/:id/image', requireAuth, canManage, rawImage, async (req, res) => {
 });
 
 // DELETE /api/consumables/:id/image   removes the photo
-router.delete('/:id/image', requireAuth, canManage, async (req, res) => {
+router.delete('/:id/image', canManage, async (req, res) => {
   const consumableId = parseId(req.params.id);
   const updated = await orNotFound(() => prisma.consumable.update({ where: { consumableId }, data: { imageUrl: null } }));
   deleteConsumableImage(consumableId);

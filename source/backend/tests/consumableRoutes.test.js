@@ -105,6 +105,11 @@ const fakePrisma = {
   user: {
     findMany: async ({ where }) =>
       db.users.filter((u) => u.active === where.active && where.role.in.includes(u.role) && u.userId !== where.userId.not),
+    findUnique: async (args) => {
+      const {where} = args
+      const user =  db.users.find((u) => u.userId === where.userId )
+      return user;
+    }
   },
   notification: {
     createMany: async ({ data }) => {
@@ -342,4 +347,15 @@ test('no low-stock alert while it stays low, or when it is restocked', async () 
   await call('PUT', `/api/consumables/${consumableId}`, { body: { currentStock: 500 } });
   await call('PUT', `/api/consumables/${consumableId}`, { body: { name: 'Agar 2 (renamed)' } });
   assert.equal(db.notifications.length, 0);
+});
+
+test('Check role change ', async () => {
+  const manager_res =  await call('POST', '/api/consumables', { as: manager ,body: { name: 'ACL', unit: 'g', currentStock: 20 } });
+  assert.equal(manager_res.status, 201);
+  const manager_detail = await manager_res.json()
+  const {name, unit, currentStock} = manager_detail
+  assert.deepEqual( {name, unit, currentStock} , { name: 'ACL', unit: 'g', currentStock: 20 });
+
+  
+  
 });
