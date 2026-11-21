@@ -7,10 +7,11 @@
 // a cyan→blue→violet→magenta colour band, and an invisible cursor that orbits the centre forever.
 // Pointer input is read from window events, because the canvas sits behind the page content.
 //
-// Changes for this app: exported as a module, and it throws a clear error when WebGL is missing
-// (the page then just shows its dark base colour).
+// Changes for this app: exported as a module; it throws a clear error when WebGL is missing (the page
+// then just shows its base colour); and `options` can change the base colour and the ink's hue band
+// while it runs, so the picture follows the app's light/dark theme.
 
-export function fluidSimulation(canvas) {
+export function fluidSimulation(canvas, options = {}) {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
 
@@ -941,7 +942,7 @@ export function fluidSimulation(canvas) {
 
         if (!config.TRANSPARENT) {
             colorProgram.bind();
-            let bc = config.BACK_COLOR;
+            let bc = options.backColor ? options.backColor() : config.BACK_COLOR;
             gl.uniform4f(colorProgram.uniforms.color, bc.r / 255, bc.g / 255, bc.b / 255, 1);
             blit(target);
         }
@@ -1154,7 +1155,8 @@ export function fluidSimulation(canvas) {
     function generateColor() {
         // Electric cyan→blue→violet→magenta band, full brightness, for a vivid,
         // slick, immersive palette.
-        const h = 0.5 + Math.random() * 0.42;
+        const [hueStart, hueRange] = options.hueBand ? options.hueBand() : [0.5, 0.42];
+        const h = hueStart + Math.random() * hueRange;
         let c = HSVtoRGB(h, 0.95, 1.0);
         c.r *= 0.92;
         c.g *= 0.92;

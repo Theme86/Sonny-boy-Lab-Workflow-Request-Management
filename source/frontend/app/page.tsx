@@ -1,61 +1,50 @@
-// app/page.tsx — the public landing page: a full-screen dark hero over a live WebGL fluid
-// (lib/fluidSimulation.js) that bursts into colour on load and keeps swirling; the mouse stirs it too.
-// The text staggers in, the heading and sub-line word by word. Under the hero, an overview of what the
-// app has and does (components/landing/LandingOverview.tsx). Styles: app/landing.css.
-// Sends visitors to the login page, or straight to the dashboard when they are already signed in.
+// app/page.tsx — the public landing page. Same header, fonts, colours and buttons as the login page,
+// and it follows the same light/dark switch. The hero sits over a live WebGL fluid
+// (lib/fluidSimulation.js) tinted to the theme; under it, a plain overview of what the app does
+// (components/landing/LandingOverview.tsx). Sends visitors to /login, or to /dashboard when signed in.
 'use client';
 
 import './landing.css';
 import Link from 'next/link';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { VaseMark } from '@/components/icons';
+import { LabInfoFooter } from '@/components/LabInfoFooter';
 import { LandingOverview } from '@/components/landing/LandingOverview';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { apiFetch } from '@/lib/api';
 import { fluidSimulation } from '@/lib/fluidSimulation';
-import { fontVariables, landingFontVariable } from '@/lib/fonts';
-import { displayFamily } from '@/lib/fontStacks';
+import { fontStyle, fontVariables } from '@/lib/fonts';
+import { useTheme, type Theme } from '@/lib/theme';
+import { ui } from '@/lib/ui';
 
-const HEADING = 'Every Lab Request, Tracked to Done';
-const SUB_LINE = 'Book equipment, report problems and order supplies in one place, instead of email threads and spreadsheets.';
+const HEADING = 'Requests, bookings and stock for the physics lab';
 
-const NAV_LINKS = [
-  { href: '/requests', label: 'Requests' },
-  { href: '/equipment', label: 'Equipment' },
-  { href: '/labsessions', label: 'Lab sessions' },
-  { href: '/consumables', label: 'Consumables' },
-] as const;
+// The fluid per theme. Dark: violet ink on the dark canvas colour (#14111c).
+// Light: the canvas is inverted in CSS, so the base is the inverse of #e9eff8 and the hues are the
+// complements of the blues we want to see.
+const FLUID: Record<Theme, { back: { r: number; g: number; b: number }; hues: [number, number] }> = {
+  dark: { back: { r: 20, g: 17, b: 28 }, hues: [0.58, 0.24] },
+  light: { back: { r: 22, g: 16, b: 7 }, hues: [0.03, 0.14] },
+};
 
-// entrance delays after load, in ms
-const DELAY = { nav: 150, badge: 320, heading: 480, sub: 1150, bar: 1450, footer: 1650 };
+const DELAY = { heading: 150, text: 650, actions: 850 };
 
 type Vars = CSSProperties & Record<`--${string}`, string>;
-
-const block = (delay: number, from = '1.25rem'): Vars => ({ '--lp-delay': `${delay}ms`, '--lp-from': from });
-
-/** Splits text into words that fade and rise in one after another. */
-function Words({ text, delay, stagger, duration, from }: { text: string; delay: number; stagger: number; duration: number; from: string }) {
-  const words = text.split(' ');
-  return words.map((word, i) => (
-    <span key={i}>
-      <span
-        className="lp-word"
-        style={{ '--lp-delay': `${delay + i * stagger}ms`, '--lp-dur': `${duration}ms`, '--lp-from': from } as Vars}
-      >
-        {word}
-      </span>
-      {i < words.length - 1 && ' '}
-    </span>
-  ));
-}
 
 const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export default function Home() {
+  const { theme } = useTheme();
+  const themeRef = useRef(theme);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // null while we ask the server, so the buttons don't flash the wrong label
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    themeRef.current = theme;
+  }, [theme]);
 
   useEffect(() => {
     apiFetch('/auth/me')
@@ -69,13 +58,16 @@ export default function Home() {
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  // the fluid: skipped for people who ask for reduced motion; without WebGL the dark base shows instead
+  // the fluid: skipped for people who ask for reduced motion; without WebGL the plain canvas colour shows
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || prefersReducedMotion()) return;
     let stop: (() => void) | undefined;
     try {
-      stop = fluidSimulation(canvas);
+      stop = fluidSimulation(canvas, {
+        backColor: () => FLUID[themeRef.current].back,
+        hueBand: () => FLUID[themeRef.current].hues,
+      });
     } catch {
       stop = undefined;
     }
@@ -83,74 +75,80 @@ export default function Home() {
   }, []);
 
   const href = signedIn ? '/dashboard' : '/login';
+  const words = HEADING.split(' ');
 
   return (
-    <div className={`lp-page ${fontVariables} ${landingFontVariable}`} style={{ '--lp-font': displayFamily } as Vars}>
-    <section className={`lp-hero ${shown ? 'lp-shown' : ''}`}>
-      <canvas ref={canvasRef} className="lp-canvas" aria-hidden="true" />
-      <div className="lp-scrim" aria-hidden="true" />
-
-      <header className="lp-nav lp-reveal" style={block(DELAY.nav, '-0.75rem')}>
-        <Link href="/" className="lp-brand">
-          <VaseMark />
-          Vase Lab
+    <div className={`flex min-h-screen flex-col ${ui.page} ${fontVariables}`} style={fontStyle}>
+      <header className="relative z-10 flex h-16 items-center justify-between gap-4 border-b border-vl-line px-4 sm:px-8">
+        <Link href="/" className={`flex items-center gap-2 rounded ${ui.focus}`}>
+          <VaseMark width={26} height={26} className="text-vl-accent" />
+          <span className="text-[22px] leading-none text-vl-ink-soft dark:text-vl-ink">Vase Lab</span>
         </Link>
-        <nav aria-label="Main" className="lp-links">
-          {NAV_LINKS.map(({ href: to, label }) => (
-            <Link key={to} href={to}>
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <span className="lp-cta-slot" aria-live="polite">
-          {signedIn === null ? (
-            <span className="sr-only">Checking access…</span>
-          ) : (
-            <Link href={href} className="lp-pill">
-              {signedIn ? 'Go to dashboard' : 'Sign in'}
-            </Link>
-          )}
-        </span>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <span className="inline-flex min-w-[88px] justify-end" aria-live="polite">
+            {signedIn === null ? (
+              <span className="sr-only">Checking access…</span>
+            ) : (
+              <Link href={href} className={ui.btnPrimary}>
+                {signedIn ? 'Go to dashboard' : 'Sign in'}
+              </Link>
+            )}
+          </span>
+        </div>
       </header>
 
-      <div className="lp-column">
-        <p className="lp-badge lp-reveal" style={block(DELAY.badge)}>
-          Physics lab · Request management
-        </p>
-        <h1 className="lp-heading">
-          <Words text={HEADING} delay={DELAY.heading} stagger={85} duration={720} from="26px" />
-        </h1>
-        <p className="lp-sub">
-          <Words text={SUB_LINE} delay={DELAY.sub} stagger={22} duration={600} from="14px" />
-        </p>
-        <div className="lp-bar-wrap lp-reveal" style={block(DELAY.bar)}>
-          <div className="lp-bar">
-            <p className="lp-bar-text">
-              {signedIn ? 'You are signed in.' : 'Sign in with your university Google account.'}
-            </p>
-            {signedIn !== null && (
-              <Link href={href} className="lp-pill">
-                {signedIn ? 'Go to dashboard' : 'Sign in with Google'}
-              </Link>
+      <section className={`lp-hero flex items-center justify-center px-4 py-20 text-center ${shown ? 'lp-shown' : ''}`}>
+        <canvas ref={canvasRef} className="lp-canvas" aria-hidden="true" />
+        <div className="lp-scrim" aria-hidden="true" />
+
+        <div className="flex max-w-[760px] flex-col items-center">
+          <h1 className="font-serif text-[36px] leading-[1.15] sm:text-[52px]">
+            {words.map((word, i) => (
+              <span key={i}>
+                <span
+                  className="lp-word"
+                  style={{ '--lp-delay': `${DELAY.heading + i * 70}ms`, '--lp-dur': '700ms', '--lp-from': '20px' } as Vars}
+                >
+                  {word}
+                </span>
+                {i < words.length - 1 && ' '}
+              </span>
+            ))}
+          </h1>
+          <p
+            className="lp-reveal mt-5 max-w-[560px] text-[17px] leading-relaxed text-vl-ink-soft"
+            style={{ '--lp-delay': `${DELAY.text}ms` } as Vars}
+          >
+            Report a broken instrument, book a room, check how much ethanol is left, and see who is looking after your request.
+            Vase Lab keeps it all in one place for Aj. Milk’s lab.
+          </p>
+          <div className="lp-reveal mt-8 flex flex-col items-center gap-3" style={{ '--lp-delay': `${DELAY.actions}ms` } as Vars}>
+            <div className="flex min-h-11 flex-wrap justify-center gap-3">
+              {signedIn !== null && (
+                <Link href={href} className={`${ui.btnPrimary} h-11 px-5`}>
+                  {signedIn ? 'Go to dashboard' : 'Sign in with Google'}
+                </Link>
+              )}
+              <a href="#what-you-can-do" className={`${ui.btnOutline} h-11 px-5`}>
+                What you can do here
+              </a>
+            </div>
+            {signedIn === false && (
+              <p className={`text-sm ${ui.muted}`}>First time here? Signing in creates your account.</p>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="lp-footer lp-reveal" style={block(DELAY.footer)}>
-        <a href="#features" className="lp-scroll">
-          See what’s inside <span aria-hidden="true">↓</span>
-        </a>
-      </div>
-    </section>
+      <main className="border-t border-vl-line bg-vl-surface-2/60">
+        <LandingOverview />
+      </main>
 
-    <main>
-      <LandingOverview />
-    </main>
-
-    <footer className="lp-page-footer">
-      <p>© 2026 Vase Lab — lab workflow &amp; request management.</p>
-    </footer>
+      <footer className={`flex flex-col items-center border-t border-vl-line px-4 pt-2 pb-8 text-xs ${ui.muted}`}>
+        <LabInfoFooter />
+        <p className="mt-4">Vase Lab · Lab Workflow &amp; Request Management</p>
+      </footer>
     </div>
   );
 }

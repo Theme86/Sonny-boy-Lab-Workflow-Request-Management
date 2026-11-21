@@ -1,190 +1,127 @@
-// components/landing/LandingOverview.tsx — the part of the landing page under the hero: what Vase Lab has,
-// what each part lets you do, who can do what, and how a request moves. Everything here describes a
-// feature the app really has; keep it in step when features change. Styles: app/landing.css (lp-*).
+// components/landing/LandingOverview.tsx — the part of the landing page under the hero: what each page
+// of the app is for, what the request statuses mean and what each role can do. It reuses the app's own
+// nav list, status badges and role badges, so it looks like (and stays in step with) the real app.
+// Everything here describes a feature the app really has: update it when features change.
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import StatusBadge from '@/app/requests/StatusBadge';
+import { RoleBadge } from '@/components/RoleBadge';
+import { NAV_ITEMS } from '@/components/shell/navConfig';
+import { STATUS_LABELS } from '@/lib/requests';
+import { ui } from '@/lib/ui';
+import type { Role } from '@/lib/users';
 
-// 24×24 stroke icons
-const ICONS: Record<string, ReactNode> = {
-  request: (
-    <>
-      <path d="M7 4h10a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
-      <path d="M9 9h6M9 13h6M9 17h3" />
-    </>
-  ),
-  calendar: (
-    <>
-      <rect x="4" y="5" width="16" height="15" rx="1.5" />
-      <path d="M4 10h16M9 3v4M15 3v4" />
-    </>
-  ),
-  room: (
-    <>
-      <path d="M4 20V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v15M4 20h16M15 9h4a1 1 0 0 1 1 1v10" />
-      <path d="M11 12v1" />
-    </>
-  ),
-  scope: (
-    <>
-      <rect x="3" y="5" width="18" height="12" rx="1.5" />
-      <path d="M3 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0M8 21h8M12 17v4" />
-    </>
-  ),
-  flask: <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3M7.5 15h9" />,
-  dashboard: (
-    <>
-      <rect x="3" y="4" width="8" height="8" rx="1" />
-      <rect x="13" y="4" width="8" height="5" rx="1" />
-      <rect x="13" y="11" width="8" height="9" rx="1" />
-      <rect x="3" y="14" width="8" height="6" rx="1" />
-    </>
-  ),
+// What each page in the top bar is for, by its link.
+const PAGES: Record<string, string> = {
+  '/dashboard':
+    'Your starting screen. It shows your own requests and lab sessions, what needs your attention, which consumables are low or expiring, and today’s room bookings. Notifications appear in the top bar.',
+  '/requests':
+    'Ask the lab for something: a maintenance job, access to a room or instrument, a consumables order, an equipment reservation or a general ticket. You can see who it is assigned to and every status change. Lecturers can also log industry collaborations; the partner’s details are only shown to the people involved.',
+  '/labsessions':
+    'Book a lab room for one or more time slots. A lecturer or the lab manager approves or rejects the booking, and a room can’t be booked twice for the same time.',
+  '/consumables':
+    'Chemicals and supplies with their stock, GHS hazard labels and storage notes. Lecturers and the lab manager are told when something runs low and 30 days before it expires.',
+  '/equipment':
+    'The lab’s instruments, with photos, categories, where each one is kept and how many units are free right now.',
+  '/rooms': 'Every lab room with its location, capacity and photo.',
 };
 
-const FEATURES = [
-  {
-    icon: 'request',
-    title: 'Requests',
-    href: '/requests',
-    text: 'One place to ask the lab for anything, instead of email and chat.',
-    points: [
-      'Five types: maintenance, access permission, consumable orders, equipment reservations and general tickets',
-      'Follow each request’s status, with a full history of every change',
-      'Staff assign an owner and move it from open to closed',
-      'Industry collaborations keep the partner’s details restricted to the people involved',
-    ],
-  },
-  {
-    icon: 'calendar',
-    title: 'Lab sessions',
-    href: '/labsessions',
-    text: 'Book time in a lab room before you start an experiment.',
-    points: [
-      'Choose a room and one or more time slots in a single booking',
-      'Lecturers or the lab manager approve or reject the session, and you are notified',
-      'A room can’t be booked twice for the same time',
-    ],
-  },
-  {
-    icon: 'room',
-    title: 'Rooms',
-    href: '/rooms',
-    text: 'See every lab room and when it is in use.',
-    points: ['Name, location, capacity and a photo for each room', 'A timeline of the day’s bookings on the dashboard'],
-  },
-  {
-    icon: 'scope',
-    title: 'Equipment',
-    href: '/equipment',
-    text: 'A catalogue of the lab’s instruments.',
-    points: [
-      'Photos, categories, properties and where each item is kept',
-      'How many units are available right now',
-      'Search, filter and sort to find what you need',
-    ],
-  },
-  {
-    icon: 'flask',
-    title: 'Consumables',
-    href: '/consumables',
-    text: 'Chemicals and supplies, kept in view.',
-    points: [
-      'Stock levels with GHS hazard labels and storage notes',
-      'An alert when something runs low',
-      'A reminder 30 days before anything expires',
-    ],
-  },
-  {
-    icon: 'dashboard',
-    title: 'Dashboard & notifications',
-    href: '/dashboard',
-    text: 'Your starting screen, built for your role.',
-    points: [
-      'Your own requests and sessions, and what needs your attention',
-      'In-app notifications when something changes',
-      'A profile with your picture and details',
-    ],
-  },
-] as const;
+const STATUS_MEANING: Record<string, string> = {
+  open: 'Just submitted, nobody has picked it up yet.',
+  in_review: 'A TA, lecturer or the lab manager is looking at it.',
+  approved: 'Accepted and waiting to be done.',
+  in_progress: 'Someone is working on it.',
+  blocked: 'Waiting on something else, such as a part or another approval.',
+  completed: 'Done.',
+  rejected: 'Not going ahead.',
+  closed: 'Off the active list, but kept in the history.',
+};
 
-const ROLES = [
-  { role: 'Lab member', can: 'Submit requests, book lab sessions and follow their own work.' },
-  { role: 'Teaching assistant', can: 'Everything a member can, plus triage requests and update their status.' },
-  { role: 'Lecturer', can: 'Approve lab sessions and submit industry collaboration requests.' },
-  { role: 'Lab manager', can: 'See and manage everything: requests, rooms, equipment, consumables and user roles.' },
-] as const;
-
-const FLOW = ['Open', 'In review', 'Approved', 'In progress', 'Completed', 'Closed'] as const;
-
-function Icon({ name }: { name: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {ICONS[name]}
-    </svg>
-  );
-}
+const ROLES: { role: Role; can: string }[] = [
+  { role: 'member', can: 'Submit requests, book lab sessions and follow their own work. Everyone starts here.' },
+  { role: 'ta', can: 'Also triages requests and updates their status.' },
+  { role: 'lecturer', can: 'Also approves lab sessions and logs industry collaborations.' },
+  { role: 'lab_manager', can: 'Sees everything, manages rooms, equipment and consumables, and sets other people’s roles.' },
+];
 
 export function LandingOverview() {
   return (
-    <>
-      <section id="features" aria-labelledby="lp-features-title" className="lp-section">
-        <p className="lp-eyebrow">What’s inside</p>
-        <h2 id="lp-features-title" className="lp-title">
-          Everything the lab runs on
+    <div className="mx-auto max-w-[960px] px-4 py-16 sm:px-8">
+      <section id="what-you-can-do" aria-labelledby="pages-heading" className="scroll-mt-6">
+        <h2 id="pages-heading" className="font-serif text-[28px] leading-tight sm:text-[32px]">
+          What you can do here
         </h2>
-        <p className="lp-lead">Six parts, one sign-in. Here is what each one lets you do.</p>
-        <ul className="lp-grid">
-          {FEATURES.map(({ icon, title, href, text, points }) => (
-            <li key={title} className="lp-card">
-              <span className="lp-card-icon">
-                <Icon name={icon} />
+        <p className={`mt-2 text-[15px] ${ui.muted}`}>These are the pages in the top bar once you sign in.</p>
+
+        <ul className={`mt-6 divide-y divide-vl-line ${ui.card}`}>
+          {NAV_ITEMS.filter(({ href }) => PAGES[href]).map(({ href, label, icon: Icon }) => (
+            <li key={href} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:gap-5">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-vl-accent-soft text-vl-accent-ink">
+                <Icon width={22} height={22} />
               </span>
-              <h3 className="lp-card-title">{title}</h3>
-              <p className="lp-card-text">{text}</p>
-              <ul className="lp-points">
-                {points.map((point) => (
-                  <li key={point}>{point}</li>
-                ))}
-              </ul>
-              <Link href={href} className="lp-card-link">
-                Open {title.toLowerCase()} <span aria-hidden="true">→</span>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[17px] font-semibold">{label}</h3>
+                <p className="mt-1 text-[15px] leading-relaxed text-vl-ink-soft">{PAGES[href]}</p>
+              </div>
+              <Link href={href} className={`${ui.btnText} self-start sm:-mr-2`}>
+                Open
               </Link>
             </li>
           ))}
         </ul>
       </section>
 
-      <section aria-labelledby="lp-flow-title" className="lp-section">
-        <p className="lp-eyebrow">How a request moves</p>
-        <h2 id="lp-flow-title" className="lp-title">
-          From first ask to closed, on record
+      <section aria-labelledby="statuses-heading" className="mt-16">
+        <h2 id="statuses-heading" className="font-serif text-[28px] leading-tight sm:text-[32px]">
+          Request statuses
         </h2>
-        <ol className="lp-flow">
-          {FLOW.map((status) => (
-            <li key={status}>{status}</li>
-          ))}
-        </ol>
-        <p className="lp-lead">
-          A request can also be marked <strong>Blocked</strong> while it waits on something, or <strong>Rejected</strong>. Closed
-          requests leave the active list but stay in the history.
+        <p className={`mt-2 text-[15px] ${ui.muted}`}>
+          A request usually goes from Open to Closed in this order. Only staff can change the status, and every change is
+          recorded.
         </p>
-      </section>
-
-      <section aria-labelledby="lp-roles-title" className="lp-section">
-        <p className="lp-eyebrow">Who can do what</p>
-        <h2 id="lp-roles-title" className="lp-title">
-          Four roles, one lab
-        </h2>
-        <p className="lp-lead">Everyone starts as a lab member. The lab manager gives out the other roles.</p>
-        <dl className="lp-roles">
-          {ROLES.map(({ role, can }) => (
-            <div key={role} className="lp-role">
-              <dt>{role}</dt>
-              <dd>{can}</dd>
+        <dl className={`mt-6 divide-y divide-vl-line ${ui.card}`}>
+          {Object.keys(STATUS_LABELS).map((status) => (
+            <div key={status} className="flex flex-col gap-1.5 px-5 py-3.5 sm:flex-row sm:items-center sm:gap-5">
+              <dt className="sm:w-32 sm:shrink-0">
+                <StatusBadge status={status} />
+              </dt>
+              <dd className="text-[15px] text-vl-ink-soft">{STATUS_MEANING[status]}</dd>
             </div>
           ))}
         </dl>
       </section>
-    </>
+
+      <section aria-labelledby="roles-heading" className="mt-16">
+        <h2 id="roles-heading" className="font-serif text-[28px] leading-tight sm:text-[32px]">
+          Roles
+        </h2>
+        <p className={`mt-2 text-[15px] ${ui.muted}`}>
+          Everyone who signs in starts as a member. The lab manager changes roles on the Users page.
+        </p>
+        <div className={`mt-6 overflow-x-auto ${ui.card}`}>
+          <table className="w-full min-w-[480px] text-left text-[15px]">
+            <thead className="bg-vl-surface-2 text-sm">
+              <tr>
+                <th scope="col" className={`px-5 py-3 font-medium ${ui.muted}`}>
+                  Role
+                </th>
+                <th scope="col" className={`px-5 py-3 font-medium ${ui.muted}`}>
+                  What they can do
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-vl-line">
+              {ROLES.map(({ role, can }) => (
+                <tr key={role}>
+                  <td className="px-5 py-3.5 align-top whitespace-nowrap">
+                    <RoleBadge role={role} />
+                  </td>
+                  <td className="px-5 py-3.5 text-vl-ink-soft">{can}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   );
 }
