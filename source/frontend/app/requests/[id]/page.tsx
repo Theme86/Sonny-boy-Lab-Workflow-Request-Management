@@ -3,7 +3,7 @@
 'use client';
 
 import { AppShell } from '@/components/AppShell';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -14,9 +14,21 @@ import {
   formatDate,
   fullName,
   type RequestDetail,
+  type RequestDetailResponse,
 } from '@/lib/requests';
 import ConfidentialityBadge from '../ConfidentialityBadge';
+import RequestActions from '../RequestActions';
 import StatusBadge from '../StatusBadge';
+
+/** GET /api/requests/:id. Rejects with an Error whose `restricted` is true for a restricted request you may not see. */
+async function fetchRequest(id: string): Promise<RequestDetailResponse> {
+  const res = await fetch(`${API_URL}/api/requests/${id}`, { credentials: 'include' });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw Object.assign(new Error(data?.error ?? 'Failed to load request'), { restricted: !!data?.restricted });
+  }
+  return data as RequestDetailResponse;
+}
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -31,24 +43,34 @@ function RequestDetailPageContent() {
   const { id } = useParams<{ id: string }>();
   const { user, loading: authLoading, error: authError } = useRequireAuth();
   const [request, setRequest] = useState<RequestDetail | null>(null);
+  const [allowedStatuses, setAllowedStatuses] = useState<string[]>([]); // what this person may move it to now (from the backend)
   const [error, setError] = useState('');
   const [restricted, setRestricted] = useState(false); // 403 from the backend: a restricted request you may not see
   const [loading, setLoading] = useState(true);
 
+  const apply = useCallback((data: RequestDetailResponse) => {
+    setRequest(data.request);
+    setAllowedStatuses(data.allowedStatuses ?? []);
+  }, []);
+
+  const showError = useCallback((err: Error & { restricted?: boolean }) => {
+    if (err.restricted) setRestricted(true);
+    setError(err.message);
+  }, []);
+
   useEffect(() => {
     if (!user) return;
-    fetch(`${API_URL}/api/requests/${id}`, { credentials: 'include' })
-      .then(async (res) => {
-        const data = await res.json().catch(() => null);
-        if (!res.ok) {
-          if (data?.restricted) setRestricted(true);
-          throw new Error(data?.error ?? 'Failed to load request');
-        }
-        setRequest(data.request);
-      })
-      .catch((err: Error) => setError(err.message))
+    fetchRequest(id)
+      .then(apply)
+      .catch(showError)
       .finally(() => setLoading(false));
-  }, [user, id]);
+  }, [user, id, apply, showError]);
+
+  // After a 409 (someone else changed it first): load it again without leaving the page,
+  // so the "Manage request" panel stays mounted and can show its message.
+  const reload = useCallback(() => {
+    fetchRequest(id).then(apply).catch(showError);
+  }, [id, apply, showError]);
 
   if (authLoading || (user && loading)) return <p className="p-8">Loading...</p>;
   if (authError) return <p className="p-8 text-red-600">{authError}</p>;
@@ -127,6 +149,15 @@ function RequestDetailPageContent() {
               </li>
             ))}
           </ol>
+
+          {/* Staff only (the component renders nothing for members): change status, assign, close. */}
+          <RequestActions
+            request={request}
+            allowedStatuses={allowedStatuses}
+            role={user.role}
+            onUpdated={apply}
+            onConflict={reload}
+          />
         </>
       )}
     </div>
